@@ -1,0 +1,73 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SnackShop.Application.DTOs.DanhGia;
+using SnackShop.Application.DTOs.SanPham;
+using SnackShop.Application.Interfaces;
+using System.Security.Claims;
+
+namespace SnackShop.API.Controllers;
+
+[ApiController]
+[Route("api/danh-gia")]
+[Route("danh-gia")]
+public class DanhGiaController : ControllerBase
+{
+    private readonly IDanhGiaService _danhGiaService;
+    private readonly IAppDbContext _db;
+
+    public DanhGiaController(IDanhGiaService danhGiaService, IAppDbContext db)
+    {
+        _danhGiaService = danhGiaService;
+        _db = db;
+    }
+
+    /// <summary>Lấy danh sách đánh giá thực tế ngẫu nhiên từ database cho trang chủ</summary>
+    [HttpGet("noi-bat")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<DanhGiaSanPhamDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDanhGiaNoiBat([FromQuery] int limit = 6, CancellationToken cancellationToken = default)
+    {
+        var size = limit > 0 && limit <= 20 ? limit : 6;
+
+        var items = await _db.DanhGiaSanPhams
+            .AsNoTracking()
+            .Include(d => d.KhachHang)
+                .ThenInclude(k => k.NguoiDung)
+            .Include(d => d.SanPham)
+            .Where(d => !string.IsNullOrEmpty(d.BinhLuan))
+            .OrderByDescending(d => d.NgayTao)
+            .Take(size * 3)
+            .Select(d => new DanhGiaSanPhamDto
+            {
+                MaDanhGia = d.MaDanhGia,
+                MaSanPham = d.MaSanPham,
+                TenSanPham = d.SanPham.TenSanPham,
+                HinhAnhSanPham = d.SanPham.HinhAnhDaiDien,
+                MaKhachHang = d.MaKhachHang,
+                TenKhachHang = d.KhachHang.NguoiDung != null ? $"{d.KhachHang.NguoiDung.HoLot} {d.KhachHang.NguoiDung.Ten}".Trim() : "Khách hàng",
+                SoSao = d.SoSao,
+                BinhLuan = d.BinhLuan,
+                NgayTao = d.NgayTao
+            })
+            .ToListAsync(cancellationToken);
+
+        // Random lấy `size` đánh giá từ danh sách
+        var rng = new Random();
+        var randomized = items.OrderBy(_ => rng.Next()).Take(size).ToList();
+
+        return Ok(randomized);
+    }
+
+    /// <summary>Đánh giá sản phẩm (sau khi đơn đã giao)</summary>
+    [HttpPost]
+    [Authorize(Roles = "khach_hang")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> TaoDanhGia([FromBody] TaoDanhGiaRequest req, CancellationToken cancellationToken)
+    {
+        var khachHangId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _danhGiaService.TaoDanhGiaAsync(khachHangId, req, cancellationToken);
+        return CreatedAtAction(nameof(TaoDanhGia), result);
+    }
+}

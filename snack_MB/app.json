@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "SnackShop",
+    "slug": "snackshop-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "primaryColor": "#ea580c",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.snackshop.app",
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFAF5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f1f8f326-5272-407f-9b85-57b1f6e85107"
+      }
+    }
+  }
+}

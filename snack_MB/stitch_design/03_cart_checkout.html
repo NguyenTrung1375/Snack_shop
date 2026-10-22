@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-container": "#f97316", "outline": "#8c7164", "on-secondary": "#ffffff", "primary-fixed": "#ffdbca", "on-background": "#121c2a", "on-surface-variant": "#584237", "on-tertiary-container": "#6c000b", "on-secondary-fixed": "#2a1700", "error": "#ba1a1a", "on-secondary-fixed-variant": "#653e00", "secondary-fixed-dim": "#ffb95f", "on-tertiary-fixed": "#410004", "surface-container-lowest": "#ffffff", "surface": "#f8f9ff", "on-primary-fixed-variant": "#783200", "on-primary-container": "#582200", "inverse-on-surface": "#eaf1ff", "on-tertiary-fixed-variant": "#930013", "outline-variant": "#e0c0b1", "inverse-primary": "#ffb690", "tertiary-fixed-dim": "#ffb3ad", "on-primary": "#ffffff", "tertiary-container": "#ff6a64", "background": "#f8f9ff", "surface-container": "#e6eeff", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "secondary-container": "#fea619", "on-surface": "#121c2a", "surface-bright": "#f8f9ff", "on-secondary-container": "#684000", "surface-container-high": "#dee9fc", "surface-variant": "#d9e3f6", "secondary": "#855300", "surface-container-highest": "#d9e3f6", "on-primary-fixed": "#341100", "on-error": "#ffffff", "surface-tint": "#9d4300", "primary": "#9d4300", "surface-dim": "#d0dbed", "on-error-container": "#93000a", "tertiary": "#b91a24", "primary-fixed-dim": "#ffb690", "tertiary-fixed": "#ffdad7", "surface-container-low": "#eff4ff", "secondary-fixed": "#ffddb8", "inverse-surface": "#27313f" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-md": "1rem", "gutter": "1rem", "gutter-mobile": "0.75rem", "margin-mobile": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "margin": "1.5rem", "space-xs": "0.25rem" }, fontFamily: { "headline-lg-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "display": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "title-md": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, fontSize: { "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "display": ["36px", { "lineHeight": "44px", "fontWeight": "800" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "fontWeight": "700" }], "headline-lg": ["30px", { "lineHeight": "38px", "fontWeight": "700" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "title-md": ["16px", { "lineHeight": "22px", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "800" }], "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><style>@layer base { html, body { width: 100vw; margin: 0; padding: 0; } body { overscroll-behavior: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head><body class="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_4px_20px_rgba(234,88,12,0.06)]"><div class="h-16 px-margin-mobile flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="SnackShop Logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgJDBtvBYosGp8ZagWB5q7173_HQFbzbQ8s6Dnv-3tVoBtHIVVH-CB4rozmRakXN8Vj-jo5LJy5k4TQ4too7_5SJ1FpDJxB1qdo-GHkE7n4yi4731nJQdXq3mBDSDlLSQDD7noFVV0smtD5wUc8048agW_9tN8ng2WKL6VIMx6ynCwDdxo5-rQjqdVgQTdQzulcrT9ulTQkhYE_oAGWjh8h9WaTTWbC9eRxhaIZsbid5eKX9CTzKVGAQ"/><div class="flex flex-col truncate"><span class="font-label-sm text-primary tracking-wider uppercase truncate">Ăn Vặt Phố</span><h1 class="font-title-md text-title-md text-on-surface font-bold truncate">Trang Chu</h1></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Search" class="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-95 transition-all"><span class="material-symbols-outlined text-[22px]">search</span></button><div class="w-11 h-11 flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp0rf9KPmoyBY_oU5GSmPYrqxBtlJ1B-TmtjLHl1s3bzNT0uq8e67koDpGxaCXn_675aHW_-1VwQfU3W8kNp4KTdbBlsMnK0rAEV47E3dxHqO85c3KCKy_ePdbVXIFF2GMjQ2UGfpePGHkagv00rZtS5XnLOXDVVouZ3wPIH_GLdVSuGkG-HFaqan6wTUQ3rJfzqFOgKy4EOBDeUyvTE8IuPrEn1r6UBRuiMq0t3IPsEnW5D1xIGvbhg"/></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface"><div class="flex flex-col w-full">
+<!-- Page Context Sub-Bar (In-Page Navigation Header) -->
+<div class="px-margin-mobile pt-space-xs pb-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm min-w-0">
+<button aria-label="Quay lại" class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface active:scale-95 transition-transform flex-shrink-0" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<div class="flex flex-col min-w-0">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">Giỏ hàng của bạn (3 món)</h2>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="inline-block w-2 h-2 rounded-full bg-primary-container"></span>
+          Đang phục vụ tại TP. Hồ Chí Minh
+        </span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs flex-shrink-0">
+<button aria-label="Hỗ trợ đơn hàng" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">support_agent</span>
+</button>
+<button aria-label="Xóa tất cả món" class="w-9 h-9 rounded-full bg-surface-container text-on-surface-variant hover:text-error active:scale-90 transition-transform flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+</button>
+</div>
+</div>
+<div class="px-margin-mobile flex flex-col gap-space-md">
+<!-- Select All Toolbar -->
+<div class="bg-surface-container-lowest rounded-xl p-space-sm shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex items-center justify-between">
+<label class="flex items-center gap-space-sm cursor-pointer select-none">
+<span class="relative flex items-center justify-center w-5 h-5 rounded-lg bg-primary-container text-on-primary">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</span>
+<span class="font-label-lg text-label-lg text-on-surface">Chọn tất cả</span>
+<span class="font-label-sm text-label-sm bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full">3/3 món</span>
+</label>
+<button class="font-label-md text-label-md text-error hover:opacity-80 active:scale-95 transition-transform flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">delete_outline</span>
+        Xóa đã chọn
+      </button>
+</div>
+<!-- Snack Items Section -->
+<div class="flex flex-col gap-space-sm">
+<!-- Item 1: Khô Gà Lá Chanh -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex gap-space-sm items-center relative overflow-hidden">
+<label class="relative flex items-center justify-center w-5 h-5 rounded-lg bg-primary-container text-on-primary flex-shrink-0 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</label>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 relative bg-surface-container">
+<img alt="Khô Gà Lá Chanh Xé Cay" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1UvsB5osrTtSaCn-OviOA47MmIxX6Kc9UngL3ew2akggXRqcD9t6aOHxKZ-P9b4ctv1pUxJBMADHgGAQ3U_VBUtHC1VqtK-AMGIMwv-N_k84xnl_xljlW2cmr4QNbQXhvQ73PzF0A3BUbdW0BCGKU8xcInUGwEXZ8FKbNKWHplv_DTISqgQGP78yriLt0NoncUbCDK9huAwLZUsL5D7sxysyfJnAJ7QXgK5ApGDyZWLh3qkbY7URVmD4EHw"/>
+<span class="absolute top-1 left-1 px-1.5 py-0.2 rounded-full bg-tertiary text-on-tertiary font-label-sm text-[9px] font-bold tracking-tight">-25%</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-between">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1 leading-tight">Khô Gà Lá Chanh Xé Cay Thượng Hạng</h3>
+<button aria-label="Xóa món" class="text-on-surface-variant hover:text-error active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5 my-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center gap-1">
+<span>Hũ Pet 250g</span>
+<span>•</span>
+<span class="text-tertiary font-bold">🌶️ Cay vừa</span>
+</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-sm text-headline-sm text-primary-container font-extrabold">65.000đ</span>
+<span class="font-body-sm text-body-sm text-outline line-through text-[11px]">87.000đ</span>
+</div>
+<!-- Stepper -->
+<div class="flex items-center bg-surface-container rounded-full p-0.5 shadow-sm">
+<button aria-label="Giảm số lượng" class="w-6 h-6 rounded-full bg-surface-container-lowest text-on-surface flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface px-2.5">1</span>
+<button aria-label="Tăng số lượng" class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 2: Bánh Tráng Cuộn Sốt Bơ -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex gap-space-sm items-center relative overflow-hidden">
+<label class="relative flex items-center justify-center w-5 h-5 rounded-lg bg-primary-container text-on-primary flex-shrink-0 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</label>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vietnamese rolled rice paper banh trang cuon sot bo with rich golden egg butter mayo sauce crispy fried shallots quail eggs crushed peanuts street food photography warm sunlight shallow depth appetizing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2emp6v8AGLmd94EMKrHBxGEmwFJcKy56SoFBv3-QkBeDoLJk4dBkBhq1n1K1LrsANwk1EJOA2tNNTmgU6qXbe3-NfQjUV6PJxHUoPLaOzVbtyN-rK-bX0k_H0byDrLMBCCljz4M0w-iLGRI5tTdU8ggvJyyobaPwnLNLGyQFdjzyuWPjwvMH0IQCu3O84ECSuOmUByPr5__eWu6Rp3HAm7IXV1BcFSy_bLARQXdObQCI_7c2_TEElTw"/>
+<span class="absolute top-1 left-1 px-1.5 py-0.2 rounded-full bg-tertiary text-on-tertiary font-label-sm text-[9px] font-bold tracking-tight">-31%</span>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-between">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1 leading-tight">Bánh Tráng Cuộn Sốt Bơ Béo Ngậy</h3>
+<button aria-label="Xóa món" class="text-on-surface-variant hover:text-error active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5 my-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center gap-1">
+<span>Suất đặc biệt</span>
+<span>•</span>
+<span class="text-secondary font-bold">🧈 Sốt bơ trứng muối</span>
+</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-sm text-headline-sm text-primary-container font-extrabold">24.000đ</span>
+<span class="font-body-sm text-body-sm text-outline line-through text-[11px]">35.000đ</span>
+</div>
+<!-- Stepper (Qty 2) -->
+<div class="flex items-center bg-surface-container rounded-full p-0.5 shadow-sm">
+<button aria-label="Giảm số lượng" class="w-6 h-6 rounded-full bg-surface-container-lowest text-on-surface flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface px-2.5">2</span>
+<button aria-label="Tăng số lượng" class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Item 3: Mực Cán Cay Rim Sa Tế -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-sm shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex gap-space-sm items-center relative overflow-hidden">
+<label class="relative flex items-center justify-center w-5 h-5 rounded-lg bg-primary-container text-on-primary flex-shrink-0 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] font-bold">check</span>
+</label>
+<div class="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 relative bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Vietnamese spicy caramelized squid snack muc rim sa te glossy chili garlic glaze golden red sheen packaged in resealable pouch street food culinary shot appetizing bright" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBO4uVkggl-YFNO4ZkvPrFh1Vr90kCJhi4wQSpQbSQRSvkIjSNcXzK_9DbbAqC_rgWfSSRwG82qe675hAGhrcEQ2vsGJzd8r9Vepmx7wHBbUZgA_gZzN8m3PS7nMraCCUvQHKElf-vDF1uvsTq7mLIMXxoQUEr1viJyvadJgWALeSv9is86mm0oXBmJWRZ-ZkN__b4PtREqDjqdbts0ZEYibz-9VyKM2Wc6tl8m8r6_dPC86Jf-p80IUA"/>
+</div>
+<div class="flex-1 min-w-0 flex flex-col justify-between">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-label-lg text-label-lg text-on-surface line-clamp-1 leading-tight">Mực Cán Cay Rim Sa Tế Cay Xè</h3>
+<button aria-label="Xóa món" class="text-on-surface-variant hover:text-error active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="flex items-center gap-1.5 my-1">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container flex items-center gap-1">
+<span>Gói Zip 150g</span>
+<span>•</span>
+<span class="font-bold">🌶️🌶️ Rất cay</span>
+</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<div class="flex items-baseline gap-1.5">
+<span class="font-headline-sm text-headline-sm text-primary-container font-extrabold">55.000đ</span>
+</div>
+<!-- Stepper -->
+<div class="flex items-center bg-surface-container rounded-full p-0.5 shadow-sm">
+<button aria-label="Giảm số lượng" class="w-6 h-6 rounded-full bg-surface-container-lowest text-on-surface flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface px-2.5">1</span>
+<button aria-label="Tăng số lượng" class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Voucher & Promotion Section -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[20px]" style="font-variation-settings: 'FILL' 1;">confirmation_number</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Mã giảm giá &amp; Ưu đãi</h3>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">Có 3 mã khả dụng</span>
+</div>
+<!-- Voucher Input Box -->
+<div class="flex items-center gap-space-xs bg-surface-container-low p-1.5 rounded-xl">
+<span class="material-symbols-outlined text-outline pl-2 text-[20px]">sell</span>
+<input class="bg-transparent flex-1 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none min-w-0" placeholder="Nhập mã ưu đãi / SNACK30" type="text" value="FREESHIP15K"/>
+<button class="bg-gradient-to-r from-primary-container to-surface-tint text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg shadow-[0_4px_12px_rgba(234,88,12,0.25)] active:scale-95 transition-transform" type="button">
+          Áp dụng
+        </button>
+</div>
+<!-- Horizontal Voucher Carousel -->
+<div class="flex gap-space-sm overflow-x-auto pt-1 pb-1 -mx-space-md px-space-md no-scrollbar">
+<!-- Voucher 1: Active -->
+<div class="min-w-[210px] bg-secondary-fixed/40 p-space-sm rounded-xl flex flex-col justify-between relative shadow-sm flex-shrink-0">
+<div class="flex items-start justify-between">
+<span class="font-label-lg text-label-lg text-primary tracking-wide">FREESHIP15K</span>
+<span class="w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface mt-1 line-clamp-1 font-medium">Giảm 15K phí vận chuyển</span>
+<div class="flex items-center justify-between mt-2 pt-2 bg-surface-container-lowest/70 px-2 py-1 rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Đơn từ 99K</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">Đã dùng</span>
+</div>
+</div>
+<!-- Voucher 2: SNACKGIAM10 -->
+<div class="min-w-[210px] bg-surface-container-low p-space-sm rounded-xl flex flex-col justify-between relative flex-shrink-0">
+<div class="flex items-start justify-between">
+<span class="font-label-lg text-label-lg text-on-surface tracking-wide">SNACKGIAM10</span>
+<button class="font-label-sm text-label-sm bg-primary-fixed text-on-primary-fixed font-bold px-2 py-0.5 rounded-full active:scale-95 transition-transform" type="button">
+              Dùng ngay
+            </button>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1 line-clamp-1">Giảm 10% tối đa 20K</span>
+<div class="flex items-center justify-between mt-2 pt-2 bg-surface-container-lowest/70 px-2 py-1 rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Đơn từ 120K</span>
+<span class="font-label-sm text-label-sm text-outline">HSD: Hôm nay</span>
+</div>
+</div>
+<!-- Voucher 3: BANHTRANG5K -->
+<div class="min-w-[210px] bg-surface-container-low p-space-sm rounded-xl flex flex-col justify-between relative flex-shrink-0">
+<div class="flex items-start justify-between">
+<span class="font-label-lg text-label-lg text-on-surface tracking-wide">BANHTRANG5K</span>
+<button class="font-label-sm text-label-sm bg-surface-container text-on-surface font-bold px-2 py-0.5 rounded-full active:scale-95 transition-transform" type="button">
+              Nhận mã
+            </button>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1 line-clamp-1">Tặng 5K khi mua bánh tráng</span>
+<div class="flex items-center justify-between mt-2 pt-2 bg-surface-container-lowest/70 px-2 py-1 rounded-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Đơn bất kỳ</span>
+<span class="font-label-sm text-label-sm text-outline">SL: 14</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Delivery Information Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+</span>
+<div>
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold tracking-wider">Địa chỉ giao hàng</span>
+<h4 class="font-title-md text-title-md text-on-surface font-bold leading-snug">Nguyễn Hải Đăng (0908.123.456)</h4>
+</div>
+</div>
+<button aria-label="Thay đổi địa chỉ" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant active:scale-90 transition-transform" type="button">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+</button>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-xl">
+<p class="font-body-md text-body-md text-on-surface-variant">268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM</p>
+</div>
+<!-- ETA Badge -->
+<div class="flex items-center gap-space-xs bg-secondary-fixed/50 px-space-sm py-2 rounded-xl">
+<span class="material-symbols-outlined text-secondary text-[20px] flex-shrink-0">two_wheeler</span>
+<div class="flex-1 min-w-0">
+<span class="font-label-md text-label-md text-on-secondary-fixed block truncate">Giao siêu tốc 30–45 phút</span>
+<span class="font-body-sm text-body-sm text-on-secondary-fixed-variant block truncate">Tài xế chuẩn bị nhận món sau khi quán chốt</span>
+</div>
+</div>
+<!-- Driver Note Input -->
+<div class="relative">
+<input class="w-full bg-surface-container-low px-space-sm py-2.5 rounded-xl font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none" placeholder="Ghi chú cho tài xế (vd: Giao lên lầu 3, bấm chuông...)" type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline text-[18px]">edit_note</span>
+</div>
+</div>
+<!-- Payment Methods Selector -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container text-[20px]" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Phương thức thanh toán</h3>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-bold">4 phương thức</span>
+</div>
+<div class="flex flex-col gap-2">
+<!-- Option 1: MoMo (Selected) -->
+<label class="p-space-sm rounded-xl bg-primary-fixed/30 flex items-center justify-between cursor-pointer shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-9 h-9 rounded-xl bg-[#a50064] text-white flex items-center justify-center font-bold text-xs tracking-tighter shadow-sm flex-shrink-0">
+              MoMo
+            </span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Ví điện tử MoMo</span>
+<span class="font-body-sm text-body-sm text-primary font-medium">Khuyên dùng • Hoàn xu 5%</span>
+</div>
+</div>
+<span class="w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</span>
+</label>
+<!-- Option 2: Cash on Delivery (COD) -->
+<label class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-9 h-9 rounded-xl bg-surface-container-highest text-on-surface flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">payments</span>
+</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Tiền mặt khi nhận hàng (COD)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Thanh toán cho tài xế</span>
+</div>
+</div>
+<span class="w-5 h-5 rounded-full bg-surface-container flex-shrink-0"></span>
+</label>
+<!-- Option 3: VNPay QR -->
+<label class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-9 h-9 rounded-xl bg-[#005ba6] text-white flex items-center justify-center font-bold text-[10px] flex-shrink-0 tracking-tight">
+              VNPAY
+            </span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">VNPay QR / Thẻ ngân hàng</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Quét mã VNPAY-QR</span>
+</div>
+</div>
+<span class="w-5 h-5 rounded-full bg-surface-container flex-shrink-0"></span>
+</label>
+<!-- Option 4: VietQR / Chuyển khoản -->
+<label class="p-space-sm rounded-xl bg-surface-container-low flex items-center justify-between cursor-pointer">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="w-9 h-9 rounded-xl bg-surface-container-highest text-on-surface flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">qr_code_2</span>
+</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Chuyển khoản (VietQR)</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Chuyển khoản 24/7 tự động xác nhận</span>
+</div>
+</div>
+<span class="w-5 h-5 rounded-full bg-surface-container flex-shrink-0"></span>
+</label>
+</div>
+</div>
+<!-- Order Summary Card (Chi tiết thanh toán) -->
+<div class="bg-surface-container-lowest rounded-2xl p-space-md shadow-[0_4px_20px_rgba(234,88,12,0.06)] flex flex-col gap-2.5">
+<div class="flex items-center gap-space-xs pb-1">
+<span class="material-symbols-outlined text-primary-container text-[20px]" style="font-variation-settings: 'FILL' 1;">receipt</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Chi tiết thanh toán</h3>
+</div>
+<div class="flex items-center justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Tạm tính (4 món)</span>
+<span class="font-title-md text-title-md text-on-surface font-semibold">168.000đ</span>
+</div>
+<div class="flex items-center justify-between font-body-md text-body-md text-on-surface-variant">
+<span>Phí vận chuyển (3.2 km)</span>
+<span class="font-title-md text-title-md text-on-surface font-semibold">22.000đ</span>
+</div>
+<div class="flex items-center justify-between font-body-md text-body-md text-on-surface-variant">
+<span class="flex items-center gap-1">
+          Giảm giá vận chuyển
+          <span class="font-label-sm text-label-sm px-1.5 py-0.2 rounded bg-secondary-fixed text-on-secondary-fixed font-bold">FREESHIP15K</span>
+</span>
+<span class="font-title-md text-title-md text-primary-container font-semibold">-15.000đ</span>
+</div>
+<div class="flex items-center justify-between font-body-md text-body-md text-on-surface-variant">
+<span class="flex items-center gap-1">
+          Giảm giá món ăn
+          <span class="font-label-sm text-label-sm px-1.5 py-0.2 rounded bg-primary-fixed text-on-primary-fixed font-bold">SNACKGIAM10</span>
+</span>
+<span class="font-title-md text-title-md text-primary-container font-semibold">-16.800đ</span>
+</div>
+<!-- Xu Reward Points Toggle -->
+<div class="flex items-center justify-between bg-surface-container-low p-2.5 rounded-xl">
+<div class="flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-extrabold text-[11px]">🪙</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Đổi 5.000 Xu Ăn Vặt</span>
+<span class="font-body-sm text-body-sm text-outline">Số dư khả dụng: 12.450 xu</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-primary-container font-bold">-5.000đ</span>
+<button aria-label="Bật giảm giá xu" class="w-10 h-6 rounded-full bg-primary-container flex items-center p-0.5 justify-end" type="button">
+<span class="w-5 h-5 rounded-full bg-white shadow-md"></span>
+</button>
+</div>
+</div>
+<!-- Separation Line via background strip -->
+<div class="h-[1px] w-full bg-surface-container my-1"></div>
+<!-- Grand Total -->
+<div class="flex items-end justify-between pt-1">
+<div>
+<span class="font-label-lg text-label-lg text-on-surface block">Tổng cộng thanh toán</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Đã bao gồm VAT &amp; phụ phí dịch vụ</span>
+</div>
+<div class="text-right">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container font-extrabold tracking-tight">153.200đ</span>
+</div>
+</div>
+</div>
+<!-- Safety / Street Food Hygiene Guarantee Note -->
+<div class="p-space-sm rounded-xl bg-surface-container flex items-center gap-space-sm mb-4">
+<span class="material-symbols-outlined text-primary text-[22px] flex-shrink-0">verified</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+        Món ăn được đóng gói vệ sinh trong túi kraft giữ nhiệt &amp; seal tem chống bóc tách từ xưởng Ăn Vặt Phố.
+      </p>
+</div>
+</div>
+<!-- Bottom Floating Checkout Bar -->
+<div class="sticky bottom-0 z-40 bg-surface-container-lowest/95 backdrop-blur-md shadow-[0_-8px_30px_rgba(234,88,12,0.12)] px-margin-mobile py-space-sm">
+<div class="flex items-center justify-between gap-space-sm">
+<div class="flex flex-col min-w-0">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Tổng thanh toán:</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-sm text-headline-sm text-primary-container font-extrabold truncate">153.200đ</span>
+</div>
+<span class="font-label-sm text-label-sm text-tertiary font-bold tracking-tight">Tiết kiệm 36.800đ</span>
+</div>
+<button class="flex-1 bg-gradient-to-r from-primary-container to-surface-tint text-on-primary py-3 px-space-md rounded-2xl font-label-lg text-label-lg shadow-[0_6px_24px_rgba(234,88,12,0.35)] hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-1.5 group" type="button">
+<span>Đặt hàng ngay (4 món)</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+</div></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(234,88,12,0.08)]" data-active-classes="text-primary-container font-bold [&amp;_.nav-indicator]:opacity-100 [&amp;_.nav-icon]:scale-110"><div class="flex items-center justify-around h-16 px-space-xs max-w-md mx-auto"><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="trang-chu" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">storefront</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Trang chủ</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="danh-muc" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">restaurant_menu</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Danh mục</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="don-hang" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">receipt_long</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Đơn hàng</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="thong-bao" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">notifications</span><span class="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-tertiary text-on-tertiary font-label-sm text-[10px] flex items-center justify-center font-bold leading-none shadow-[0_2px_6px_rgba(185,26,36,0.3)]">3</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Thông báo</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="ca-nhan" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">person</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Cá nhân</span></a></div></nav></body></html>

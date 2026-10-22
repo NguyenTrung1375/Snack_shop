@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary-container": "#f97316", "outline": "#8c7164", "on-secondary": "#ffffff", "primary-fixed": "#ffdbca", "on-background": "#121c2a", "on-surface-variant": "#584237", "on-tertiary-container": "#6c000b", "on-secondary-fixed": "#2a1700", "error": "#ba1a1a", "on-secondary-fixed-variant": "#653e00", "secondary-fixed-dim": "#ffb95f", "on-tertiary-fixed": "#410004", "surface-container-lowest": "#ffffff", "surface": "#f8f9ff", "on-primary-fixed-variant": "#783200", "on-primary-container": "#582200", "inverse-on-surface": "#eaf1ff", "on-tertiary-fixed-variant": "#930013", "outline-variant": "#e0c0b1", "inverse-primary": "#ffb690", "tertiary-fixed-dim": "#ffb3ad", "on-primary": "#ffffff", "tertiary-container": "#ff6a64", "background": "#f8f9ff", "surface-container": "#e6eeff", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "secondary-container": "#fea619", "on-surface": "#121c2a", "surface-bright": "#f8f9ff", "on-secondary-container": "#684000", "surface-container-high": "#dee9fc", "surface-variant": "#d9e3f6", "secondary": "#855300", "surface-container-highest": "#d9e3f6", "on-primary-fixed": "#341100", "on-error": "#ffffff", "surface-tint": "#9d4300", "primary": "#9d4300", "surface-dim": "#d0dbed", "on-error-container": "#93000a", "tertiary": "#b91a24", "primary-fixed-dim": "#ffb690", "tertiary-fixed": "#ffdad7", "surface-container-low": "#eff4ff", "secondary-fixed": "#ffddb8", "inverse-surface": "#27313f" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-md": "1rem", "gutter": "1rem", "gutter-mobile": "0.75rem", "margin-mobile": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "margin": "1.5rem", "space-xs": "0.25rem" }, fontFamily: { "headline-lg-mobile": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "display": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "label-lg": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "title-md": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"] }, fontSize: { "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "display": ["36px", { "lineHeight": "44px", "fontWeight": "800" }], "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "18px", "fontWeight": "700" }], "headline-lg": ["30px", { "lineHeight": "38px", "fontWeight": "700" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "title-md": ["16px", { "lineHeight": "22px", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "12px", "fontWeight": "800" }], "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script><style>@layer base { html, body { width: 100vw; margin: 0; padding: 0; } body { overscroll-behavior: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_4px_20px_rgba(234,88,12,0.06)]"><div class="h-16 px-margin-mobile flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0"><img alt="SnackShop Logo" class="h-8 w-auto object-contain flex-shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgJDBtvBYosGp8ZagWB5q7173_HQFbzbQ8s6Dnv-3tVoBtHIVVH-CB4rozmRakXN8Vj-jo5LJy5k4TQ4too7_5SJ1FpDJxB1qdo-GHkE7n4yi4731nJQdXq3mBDSDlLSQDD7noFVV0smtD5wUc8048agW_9tN8ng2WKL6VIMx6ynCwDdxo5-rQjqdVgQTdQzulcrT9ulTQkhYE_oAGWjh8h9WaTTWbC9eRxhaIZsbid5eKX9CTzKVGAQ"/><div class="flex flex-col truncate"><span class="font-label-sm text-primary tracking-wider uppercase truncate">Ăn Vặt Phố</span><h1 class="font-title-md text-title-md text-on-surface font-bold truncate">Trang Chu</h1></div></div><div class="flex items-center gap-space-xs flex-shrink-0"><button aria-label="Search" class="w-11 h-11 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary active:scale-95 transition-all"><span class="material-symbols-outlined text-[22px]">search</span></button><div class="w-11 h-11 flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAp0rf9KPmoyBY_oU5GSmPYrqxBtlJ1B-TmtjLHl1s3bzNT0uq8e67koDpGxaCXn_675aHW_-1VwQfU3W8kNp4KTdbBlsMnK0rAEV47E3dxHqO85c3KCKy_ePdbVXIFF2GMjQ2UGfpePGHkagv00rZtS5XnLOXDVVouZ3wPIH_GLdVSuGkG-HFaqan6wTUQ3rJfzqFOgKy4EOBDeUyvTE8IuPrEn1r6UBRuiMq0t3IPsEnW5D1xIGvbhg"/></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-16 pb-28 bg-surface"><div class="flex flex-col w-full pb-8">
+<!-- Interactive Toast Notification Feedback -->
+<div class="fixed top-20 left-4 right-4 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-4 flex items-center justify-between px-4 py-3 rounded-full bg-inverse-surface text-inverse-on-surface shadow-xl" id="toast-read-all">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-secondary-container" style="font-variation-settings: 'FILL' 1;">done_all</span>
+<span class="font-label-md text-label-md">Đã đánh dấu đọc tất cả thông báo!</span>
+</div>
+<span class="font-body-sm text-body-sm text-surface-variant font-medium">Hoàn tất</span>
+</div>
+<!-- Screen Top Bar & Filter Container -->
+<div class="sticky top-16 z-30 bg-surface/90 backdrop-blur-xl px-4 pt-3 pb-3">
+<!-- Action Bar -->
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-baseline gap-2">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight">Thông báo</h2>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-label-sm text-label-sm shadow-[0_2px_8px_rgba(249,115,22,0.35)]" id="unread-counter-badge">3 mới</span>
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-fixed hover:bg-primary-container/20 text-on-primary-fixed-variant active:scale-95 transition-all" id="btn-mark-all-read" onclick="markAllAsRead()">
+<span class="material-symbols-outlined text-[18px]">done_all</span>
+<span class="font-label-md text-label-md">Đã đọc tất cả</span>
+</button>
+</div>
+<!-- Filter Pills (Scrollable) -->
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+<button class="filter-chip active flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary-container text-on-primary font-label-md text-label-md shadow-[0_2px_10px_rgba(249,115,22,0.25)] transition-all" onclick="filterFeed('all', this)">
+<span>Tất cả</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-lowest/25 text-on-primary font-label-sm text-[10px]">12</span>
+</button>
+<button class="filter-chip flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 font-label-md text-label-md transition-all" onclick="filterFeed('unread', this)">
+<span>Chưa đọc</span>
+<span class="px-1.5 py-0.2 rounded-full bg-primary text-on-primary font-label-sm text-[10px]" id="unread-filter-count">3</span>
+</button>
+<button class="filter-chip flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 font-label-md text-label-md transition-all" onclick="filterFeed('order', this)">
+<span class="material-symbols-outlined text-[16px]">moped</span>
+<span>Đơn hàng</span>
+</button>
+<button class="filter-chip flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 font-label-md text-label-md transition-all" onclick="filterFeed('promo', this)">
+<span class="material-symbols-outlined text-[16px]">local_fire_department</span>
+<span>Khuyến mãi</span>
+</button>
+</div>
+</div>
+<!-- Notification Feed Stream -->
+<div class="px-4 space-y-6 mt-1">
+<!-- Group: Hôm nay -->
+<section class="space-y-3" id="group-today">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-label-sm text-label-sm tracking-wider uppercase text-primary">Hôm nay</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">3 tin chưa xem</span>
+</div>
+<!-- Card 1: Order In-Transit (Unread) -->
+<article class="notif-card unread group relative rounded-2xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(234,88,12,0.08)] overflow-hidden transition-all duration-200 active:scale-[0.99]" data-category="order">
+<!-- Vibrant Left Accent Bar -->
+<div class="accent-bar absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="p-3.5 pl-4 sm:p-4 sm:pl-5 flex gap-3">
+<!-- Thumbnail / Icon -->
+<div class="flex-shrink-0">
+<div class="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-on-primary shadow-[0_4px_12px_rgba(249,115,22,0.3)]">
+<span class="material-symbols-outlined text-[26px]">two_wheeler</span>
+<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error border-2 border-surface-container-lowest"></span>
+</div>
+</div>
+<!-- Body Content -->
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="unread-tag px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] uppercase tracking-wide">Mới</span>
+<span class="font-label-md text-label-md text-on-surface truncate max-w-[190px]">Đơn #DH-8842 đang đến! 🛵</span>
+</div>
+<span class="font-body-sm text-[11px] text-on-surface-variant flex-shrink-0 whitespace-nowrap">5 phút</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-3 line-clamp-2">
+              Tài xế <strong class="text-on-surface font-semibold">Nguyễn Văn Hùng</strong> đang giao Khô Gà Lá Chanh &amp; Bánh Tráng Trộn phô mai. Dự kiến cập bến sau 12 phút nữa!
+            </p>
+<!-- Food Miniature Preview and Action -->
+<div class="flex items-center justify-between gap-2 pt-1 border-t border-surface-container">
+<div class="flex items-center gap-2 min-w-0">
+<img class="w-8 h-8 rounded-lg object-cover flex-shrink-0" data-alt="A mouthwatering bowl of crispy Vietnamese shredded chicken with lime leaves and golden rice paper snack with chili dipping sauce on a cozy street vendor table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcTknvwQ5UeX_IwwiTrNUp5WF_U0SNicmZ_zOqs0KrvzXVMMTT78LdoW5P-whNbzrrn14NoUERYI6uQmHialSJ5WEIFx0LSWLzfzO7pNBxqu6sc0cIwTfhIfX8flQxVI5m6WlK_qMRkyNJBmncTnLl3ua24riWH-PGEsMN5sm6u72wF73bu5WIG01KyPn-RqHaKLwLZ6UEXG8lmN0PWeaSNcV3tKYyM8a0NlZ-bS229-w94jqyCVuf9A"/>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">2 món • 89.000đ</span>
+</div>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary-fixed/60 hover:bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm active:scale-95 transition-all flex-shrink-0">
+<span>Theo dõi</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 2: Flash Voucher Giờ Chiều (Unread) -->
+<article class="notif-card unread group relative rounded-2xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(234,88,12,0.08)] overflow-hidden transition-all duration-200 active:scale-[0.99]" data-category="promo">
+<div class="accent-bar absolute left-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
+<div class="p-3.5 pl-4 sm:p-4 sm:pl-5 flex gap-3">
+<!-- Discount / Gift Icon -->
+<div class="flex-shrink-0">
+<div class="relative w-12 h-12 rounded-2xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant shadow-[0_4px_12px_rgba(254,166,25,0.25)]">
+<span class="material-symbols-outlined text-[26px]">redeem</span>
+<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error border-2 border-surface-container-lowest"></span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="unread-tag px-1.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-[10px] uppercase tracking-wide">HOT DEAL</span>
+<span class="font-label-md text-label-md text-on-surface">Voucher Giờ Chiều: Giảm 35K 🔥</span>
+</div>
+<span class="font-body-sm text-[11px] text-on-surface-variant flex-shrink-0">30 phút</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2.5">
+              Nhập mã <span class="px-2 py-0.5 rounded bg-surface-container font-mono font-bold text-primary text-[13px]">TIECXIE35</span> giảm liền tay 35.000đ cho đơn từ 120.000đ. Đừng để bụng đói lúc tan tầm!
+            </p>
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-1.5 text-tertiary">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-body-sm text-[11px] font-semibold">Hết hạn lúc 17:00 hôm nay</span>
+</div>
+<button class="px-3 py-1.5 rounded-full bg-secondary-container hover:bg-secondary text-on-secondary font-label-sm text-label-sm shadow-[0_2px_8px_rgba(254,166,25,0.3)] active:scale-95 transition-all flex-shrink-0" onclick="claimVoucher(this)">
+                Lưu mã ngay
+              </button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3: Order Confirmation (Unread) -->
+<article class="notif-card unread group relative rounded-2xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(234,88,12,0.08)] overflow-hidden transition-all duration-200 active:scale-[0.99]" data-category="order">
+<div class="accent-bar absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="p-3.5 pl-4 sm:p-4 sm:pl-5 flex gap-3">
+<div class="flex-shrink-0">
+<div class="relative w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined text-[26px]">receipt_long</span>
+<span class="unread-dot absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error border-2 border-surface-container-lowest"></span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<div class="flex items-center gap-1.5">
+<span class="unread-tag px-1.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] uppercase tracking-wide">Mới</span>
+<span class="font-label-md text-label-md text-on-surface truncate">Bếp đã nhận đơn #DH-8842</span>
+</div>
+<span class="font-body-sm text-[11px] text-on-surface-variant flex-shrink-0">1 giờ</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2 line-clamp-2">
+              Quán <strong class="text-on-surface font-semibold">Ăn Vặt Phố - Lý Thường Kiệt</strong> đang chiên nóng nem chua và trộn bánh tráng tươi ngon cho bạn.
+            </p>
+<div class="flex items-center justify-end">
+<button class="font-label-sm text-label-sm text-primary hover:text-on-primary-container py-1 px-2 rounded-lg transition-colors flex items-center gap-1">
+<span>Xem chi tiết hoá đơn</span>
+<span class="material-symbols-outlined text-[15px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+</section>
+<!-- Group: Trước đó (Read) -->
+<section class="space-y-3 pt-2" id="group-earlier">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm tracking-wider uppercase text-on-surface-variant">Hôm qua &amp; Trước đó</span>
+<span class="font-body-sm text-body-sm text-outline">Đã đọc</span>
+</div>
+<!-- Card 4: Cashback Points (Read) -->
+<article class="notif-card read group relative rounded-2xl bg-surface-container-low shadow-sm overflow-hidden transition-all duration-200" data-category="promo">
+<div class="p-3.5 pl-4 sm:p-4 flex gap-3">
+<div class="flex-shrink-0">
+<div class="w-12 h-12 rounded-2xl bg-secondary-fixed/50 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<span class="font-label-md text-label-md text-on-surface">+500 Xu Thưởng Ăn Vặt 🎉</span>
+<span class="font-body-sm text-[11px] text-outline flex-shrink-0">Hôm qua, 18:20</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">
+              Bạn nhận được điểm thưởng sau khi đánh giá 5 sao cho món <span class="italic text-on-surface">Da Heo Chiên Giòn Lắc Muối Ớt</span>.
+            </p>
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Số dư xu: <strong class="text-primary font-bold">1.850 Xu</strong></span>
+<button class="font-label-sm text-label-sm text-secondary hover:text-on-secondary-container transition-colors">
+                Dùng xu đổi quà
+              </button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 5: App System Update (Read) -->
+<article class="notif-card read group relative rounded-2xl bg-surface-container-low shadow-sm overflow-hidden transition-all duration-200" data-category="system">
+<div class="p-3.5 pl-4 sm:p-4 flex gap-3">
+<div class="flex-shrink-0">
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">rocket_launch</span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<span class="font-label-md text-label-md text-on-surface">Cập nhật ứng dụng v2.4.0 🚀</span>
+<span class="font-body-sm text-[11px] text-outline flex-shrink-0">2 ngày trước</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-1">
+              Cải thiện bản đồ theo dõi tài xế thời gian thực siêu mượt và bổ sung bộ lọc "Món cay xé lưỡi" cho tín đồ ăn cay!
+            </p>
+</div>
+</div>
+</article>
+<!-- Card 6: Food Recommendation (Read) -->
+<article class="notif-card read group relative rounded-2xl bg-surface-container-low shadow-sm overflow-hidden transition-all duration-200" data-category="promo">
+<div class="p-3.5 pl-4 sm:p-4 flex gap-3">
+<div class="flex-shrink-0">
+<div class="w-12 h-12 rounded-2xl bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[24px]">local_cafe</span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-start justify-between gap-1.5 mb-1">
+<span class="font-label-md text-label-md text-on-surface">Gợi ý món xế: Trà Dâu Tằm Macchiato</span>
+<span class="font-body-sm text-[11px] text-outline flex-shrink-0">3 ngày trước</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-2">
+              Vừa ngọt mát vừa giải ngấy hoàn hảo bên đĩa Bánh Tráng Cuộn Sốt Bơ Béo Ngậy.
+            </p>
+<div class="flex items-center gap-2">
+<img class="w-10 h-10 rounded-xl object-cover" data-alt="A refreshing glass of cold mulberry iced tea with thick white creamy macchiato foam on top placed next to fresh mint sprigs on a warm rustic tabletop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZZR9MNR3AgV-8n0-i504yvnZ5lDRaXwOyybvmG5ZSs_ocBTwNd9M32laDruW04ckRdWOd-SRQnkg1ktoZtEyyidhcAmJ1T_FUlLSNlWxKYfL70ZpX_zx36H-TUCdO3IgfRw-kFfo5SX3-o4jb-6P-QyHbRWOh7Dj4vZBcbk88DOpjPGPn_Ew4y8d4LnPS1zWaqfrp4sNNWdS6T_FOtJD6hvspJY1K5hJo0NkvU1cUmTynAF6WkzLhJw"/>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface">Ăn Vặt Cô Ba</span>
+<span class="font-body-sm text-[11px] text-primary font-bold">28.000đ • Giảm 15%</span>
+</div>
+</div>
+</div>
+</div>
+</article>
+</section>
+<!-- Friendly Street Food Encouragement / End of Feed Banner -->
+<div class="rounded-3xl bg-gradient-to-br from-primary-fixed/40 via-surface-container-high/60 to-secondary-fixed/30 p-5 text-center flex flex-col items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center text-primary text-2xl">
+        🍿
+      </div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Bạn đã xem hết thông báo!</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs mx-auto mt-0.5">
+          Bụng có đang cồn cào không? Khám phá menu nóng giòn vừa ra lò từ quán ruột nhé.
+        </p>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary-container to-primary text-on-primary font-label-md text-label-md shadow-[0_4px_16px_rgba(249,115,22,0.35)] active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">restaurant_menu</span>
+<span>Lướt món ngon ngay</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  function markAllAsRead() {
+    const unreadCards = document.querySelectorAll('.notif-card.unread');
+    unreadCards.forEach(card => {
+      card.classList.remove('unread');
+      card.classList.add('read', 'bg-surface-container-low');
+      card.classList.remove('bg-surface-container-lowest');
+      
+      const accent = card.querySelector('.accent-bar');
+      if (accent) accent.remove();
+
+      const dot = card.querySelector('.unread-dot');
+      if (dot) dot.remove();
+
+      const tag = card.querySelector('.unread-tag');
+      if (tag) tag.remove();
+    });
+
+    // Update counters
+    const badge = document.getElementById('unread-counter-badge');
+    if (badge) {
+      badge.textContent = '0 mới';
+      badge.className = 'px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-sm text-label-sm';
+    }
+
+    const filterCount = document.getElementById('unread-filter-count');
+    if (filterCount) {
+      filterCount.textContent = '0';
+      filterCount.className = 'px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px]';
+    }
+
+    // Show Toast
+    const toast = document.getElementById('toast-read-all');
+    if (toast) {
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-4');
+      }, 2500);
+    }
+  }
+
+  function filterFeed(category, targetButton) {
+    // Style active button
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.className = 'filter-chip flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:bg-primary-fixed/40 font-label-md text-label-md transition-all';
+    });
+
+    targetButton.className = 'filter-chip active flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary-container text-on-primary font-label-md text-label-md shadow-[0_2px_10px_rgba(249,115,22,0.25)] transition-all';
+
+    const cards = document.querySelectorAll('.notif-card');
+    cards.forEach(card => {
+      const isUnread = card.classList.contains('unread');
+      const cardCategory = card.getAttribute('data-category');
+
+      if (category === 'all') {
+        card.style.display = 'block';
+      } else if (category === 'unread') {
+        card.style.display = isUnread ? 'block' : 'none';
+      } else if (category === 'order') {
+        card.style.display = (cardCategory === 'order') ? 'block' : 'none';
+      } else if (category === 'promo') {
+        card.style.display = (cardCategory === 'promo') ? 'block' : 'none';
+      }
+    });
+  }
+
+  function claimVoucher(btn) {
+    btn.textContent = 'Đã lưu ✓';
+    btn.className = 'px-3 py-1.5 rounded-full bg-surface-container text-secondary font-label-sm text-label-sm font-bold transition-all';
+    btn.disabled = true;
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(234,88,12,0.08)]" data-active-classes="text-primary-container font-bold [&amp;_.nav-indicator]:opacity-100 [&amp;_.nav-icon]:scale-110"><div class="flex items-center justify-around h-16 px-space-xs max-w-md mx-auto"><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="trang-chu" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">storefront</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Trang chủ</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="danh-muc" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">restaurant_menu</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Danh mục</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="don-hang" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">receipt_long</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Đơn hàng</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="thong-bao" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">notifications</span><span class="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-tertiary text-on-tertiary font-label-sm text-[10px] flex items-center justify-center font-bold leading-none shadow-[0_2px_6px_rgba(185,26,36,0.3)]">3</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Thông báo</span></a><a class="relative flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant transition-all hover:text-on-surface" data-path="ca-nhan" href="#"><div class="relative flex items-center justify-center"><span class="material-symbols-outlined text-[24px] nav-icon transition-transform">person</span><span class="nav-indicator absolute -top-1 w-1.5 h-1.5 rounded-full bg-primary-container shadow-[0_0_8px_rgba(249,115,22,0.8)] opacity-0 transition-opacity"></span></div><span class="font-label-sm text-label-sm mt-0.5">Cá nhân</span></a></div></nav></body></html>
