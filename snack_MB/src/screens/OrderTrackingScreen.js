@@ -286,6 +286,13 @@ export default function OrderTrackingScreen({ navigation, route }) {
               </View>
             ))}
 
+            {order.tienGiamGia > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+                <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600' }}>Ưu đãi giảm giá:</Text>
+                <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '700' }}>-{formatVnd(order.tienGiamGia)}</Text>
+              </View>
+            )}
+
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
               <Text style={styles.totalValue}>{formatVnd(order.tongTienThanhToan)}</Text>

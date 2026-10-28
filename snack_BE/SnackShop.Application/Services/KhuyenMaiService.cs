@@ -52,6 +52,32 @@ public class KhuyenMaiService : IKhuyenMaiService
 
         if (voucher == null)
         {
+            if (code.StartsWith("COMBO_"))
+            {
+                var amountStr = code.Substring("COMBO_".Length);
+                if (decimal.TryParse(amountStr, out var comboDiscount) && comboDiscount > 0)
+                {
+                    var anyCtkm = await _db.ChuongTrinhKhuyenMais
+                        .Select(c => (Guid?)c.MaCtkm)
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    var tienGiam = Math.Min(comboDiscount, tongTienHang);
+                    return new KiemTraVoucherResponse
+                    {
+                        HopLe = true,
+                        MaCtkm = anyCtkm ?? Guid.Empty,
+                        MaCode = code,
+                        TenKm = "Ưu đãi Combo Ăn Vặt",
+                        LoaiGiamGia = "so_tien",
+                        GiaTriGiam = comboDiscount,
+                        GiaTriDonToiThieu = 0,
+                        GiamToiDa = comboDiscount,
+                        TienGiamGia = tienGiam,
+                        ThongBao = $"Áp dụng ưu đãi Combo thành công. Bạn được giảm {tienGiam:N0}đ."
+                    };
+                }
+            }
+
             throw new AppException("Mã voucher không hợp lệ.", StatusCodes.Status404NotFound);
         }
 

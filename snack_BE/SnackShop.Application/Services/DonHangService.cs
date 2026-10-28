@@ -46,7 +46,7 @@ public class DonHangService : IDonHangService
         {
             var voucherResult = await _khuyenMaiService.KiemTraVoucherAsync(khachHangId ?? Guid.Empty, req.MaVoucher, productDetails.TienHang, cancellationToken);
             tienGiamGia = voucherResult.TienGiamGia;
-            appliedCtkmId = voucherResult.MaCtkm;
+            appliedCtkmId = voucherResult.MaCtkm == Guid.Empty ? null : voucherResult.MaCtkm;
             appliedTenKm = voucherResult.TenKm;
             appliedVoucherCode = voucherResult.MaCode;
         }
@@ -129,7 +129,7 @@ public class DonHangService : IDonHangService
         {
             var voucherResult = await _khuyenMaiService.KiemTraVoucherAsync(khachHangId, req.MaVoucher, productDetails.TienHang, cancellationToken);
             tienGiamGia = voucherResult.TienGiamGia;
-            appliedCtkmId = voucherResult.MaCtkm;
+            appliedCtkmId = voucherResult.MaCtkm == Guid.Empty ? null : voucherResult.MaCtkm;
         }
         else if (req.MaCtkm.HasValue)
         {
