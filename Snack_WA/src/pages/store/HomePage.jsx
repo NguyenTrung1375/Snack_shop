@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowRightOutlined, 
   ShoppingOutlined, 
+  ShoppingCartOutlined, 
   FireOutlined, 
   ThunderboltOutlined, 
   SafetyCertificateOutlined, 
