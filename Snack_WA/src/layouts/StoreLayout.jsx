@@ -16,13 +16,15 @@ import {
   SafetyCertificateOutlined,
   SyncOutlined,
   GiftOutlined,
-  OrderedListOutlined
+  OrderedListOutlined,
+  FireOutlined
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../shared/auth/authStore';
 import { ROLES, roleLabels } from '../shared/constants/roles';
 import { useCartQuery } from '../features/cart/hooks';
 import { useUnreadCountQuery } from '../features/notifications/hooks';
+import SessionTimerWidget from '../shared/components/SessionTimerWidget';
 
 const { Header, Content, Footer } = Layout;
 
@@ -96,6 +98,18 @@ export default function StoreLayout() {
       key: '/san-pham',
       icon: <AppstoreOutlined />,
       label: <Link to="/san-pham">Món ăn vặt</Link>,
+    },
+    {
+      key: '/combo',
+      icon: <FireOutlined style={{ color: '#ea580c' }} />,
+      label: (
+        <Link to="/combo" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Combo Ưu Đãi</span>
+          <Tag color="volcano" style={{ margin: 0, fontSize: '10px', padding: '0 5px', lineHeight: '16px', borderRadius: 4 }}>
+            HOT
+          </Tag>
+        </Link>
+      ),
     },
   ];
 
@@ -223,6 +237,8 @@ export default function StoreLayout() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             />
           </Badge>
+
+          {token && <SessionTimerWidget />}
 
           {token ? (
             <Dropdown menu={accountMenu} placement="bottomRight">
@@ -448,6 +464,13 @@ function BottomNav({ pathname, token, cartCount }) {
       active: pathname.startsWith('/san-pham'),
     },
     {
+      key: 'combos',
+      label: 'Combo',
+      path: '/combo',
+      icon: <FireOutlined />,
+      active: pathname.startsWith('/combo'),
+    },
+    {
       key: 'cart',
       label: 'Giỏ hàng',
       path: '/gio-hang',
@@ -457,13 +480,6 @@ function BottomNav({ pathname, token, cartCount }) {
         </Badge>
       ),
       active: pathname.startsWith('/gio-hang'),
-    },
-    {
-      key: 'orders',
-      label: 'Đơn hàng',
-      path: '/don-hang',
-      icon: <OrderedListOutlined />,
-      active: pathname.startsWith('/don-hang'),
     },
     {
       key: 'account',

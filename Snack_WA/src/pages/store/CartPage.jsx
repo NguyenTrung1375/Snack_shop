@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCartQuery, useUpdateCartItem, useRemoveFromCart } from '../../features/cart/hooks';
+import { useComboCartStore } from '../../features/cart/comboCartStore';
 import { formatVnd } from '../../shared/utils/formatters';
 
 const { Title, Text, Paragraph } = Typography;
@@ -33,6 +34,8 @@ export default function CartPage() {
   const { data: cartItems = [], isLoading, isError } = useCartQuery();
   const { mutate: updateItem, isPending: isUpdating } = useUpdateCartItem();
   const { mutate: removeItem, isPending: isRemoving } = useRemoveFromCart();
+  const { appliedComboVouchers, getTotalComboSavings, getPrimaryComboVoucherCode } = useComboCartStore();
+  const comboSavings = getTotalComboSavings ? getTotalComboSavings() : 0;
 
   const handleUpdateQuantity = (item, newQuantity) => {
     if (newQuantity <= 0) {
@@ -70,8 +73,9 @@ export default function CartPage() {
 
   // Calculate pricing
   const subtotal = cartItems.reduce((acc, item) => acc + (item.thanhTien || (item.giaBan * item.soLuong)), 0);
+  const effectiveComboSavings = Math.min(comboSavings, subtotal);
   const shippingFee = cartItems.length > 0 ? 20000 : 0;
-  const totalAmount = subtotal + shippingFee;
+  const totalAmount = Math.max(0, subtotal - effectiveComboSavings + shippingFee);
 
   return (
     <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -143,7 +147,16 @@ export default function CartPage() {
           <Col xs={24} lg={16}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {cartItems.map((item) => {
-                const itemTotal = item.thanhTien || (item.giaBan * item.soLuong);
+                const comboVoucher = (appliedComboVouchers || []).find(
+                  (v) => v.itemIds && v.itemIds.includes(item.maSanPham)
+                );
+                const discountPercent = comboVoucher
+                  ? (comboVoucher.discountPercent || Math.round((comboVoucher.savedAmount / (comboVoucher.originalPrice || 1)) * 100))
+                  : null;
+                const effectiveUnitPrice = discountPercent 
+                  ? Math.round(item.giaBan * (1 - (discountPercent / 100))) 
+                  : item.giaBan;
+                const itemTotal = effectiveUnitPrice * item.soLuong;
                 return (
                   <Card 
                     key={item.maGioHang} 
@@ -197,9 +210,30 @@ export default function CartPage() {
                           </div>
                         </Link>
 
-                        <div style={{ color: '#ea580c', fontWeight: 700, fontSize: '0.95rem', marginBottom: 10 }}>
-                          {formatVnd(item.giaBan)}
+                        {/* Unit price with strikethrough if combo */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                          <span style={{ color: '#ea580c', fontWeight: 700, fontSize: '0.95rem' }}>
+                            {formatVnd(effectiveUnitPrice)}
+                          </span>
+                          {discountPercent && (
+                            <>
+                              <span style={{ color: '#a8a29e', fontSize: '0.85rem', textDecoration: 'line-through' }}>
+                                {formatVnd(item.giaBan)}
+                              </span>
+                              <Tag color="volcano" style={{ margin: 0, fontSize: '11px', fontWeight: 800, borderRadius: 4 }}>
+                                -{discountPercent}%
+                              </Tag>
+                            </>
+                          )}
                         </div>
+
+                        {comboVoucher && (
+                          <div style={{ marginBottom: 10 }}>
+                            <Tag color="orange" style={{ margin: 0, fontSize: '11px', fontWeight: 700, borderRadius: 6 }}>
+                              🎁 Ưu đãi theo {comboVoucher.comboName}
+                            </Tag>
+                          </div>
+                        )}
 
                         {/* Quantity Controls & Delete */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -283,6 +317,13 @@ export default function CartPage() {
                   <Text strong>{formatVnd(subtotal)}</Text>
                 </div>
 
+                {effectiveComboSavings > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', color: '#16a34a' }}>
+                    <span>Ưu đãi Combo đã chọn:</span>
+                    <strong style={{ color: '#16a34a' }}>-{formatVnd(effectiveComboSavings)}</strong>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
                   <Text type="secondary">Phí vận chuyển dự kiến:</Text>
                   <Text strong>{formatVnd(shippingFee)}</Text>
@@ -304,7 +345,7 @@ export default function CartPage() {
                   type="primary"
                   size="large"
                   icon={<ArrowRightOutlined />}
-                  onClick={() => navigate('/thanh-toan')}
+                  onClick={() => navigate('/thanh-toan', { state: { comboVoucherCode: getPrimaryComboVoucherCode() } })}
                   style={{
                     height: 50,
                     borderRadius: 12,

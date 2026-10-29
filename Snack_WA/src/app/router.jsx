@@ -16,6 +16,8 @@ const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 const ProductListPage = lazy(() => import('../pages/store/ProductListPage'));
 const ProductDetailPage = lazy(() => import('../pages/store/ProductDetailPage'));
+const CombosPage = lazy(() => import('../pages/store/CombosPage'));
+const ComboDetailPage = lazy(() => import('../pages/store/ComboDetailPage'));
 const CartPage = lazy(() => import('../pages/store/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/store/CheckoutPage'));
 const OrderHistoryPage = lazy(() => import('../pages/store/OrderHistoryPage'));
@@ -54,6 +56,8 @@ export default function AppRouter() {
       <Route index element={<Load><HomePage /></Load>} />
       <Route path="san-pham" element={<Load><ProductListPage /></Load>} />
       <Route path="san-pham/:id" element={<Load><ProductDetailPage /></Load>} />
+      <Route path="combo" element={<Load><CombosPage /></Load>} />
+      <Route path="combo/:id" element={<Load><ComboDetailPage /></Load>} />
       <Route path="gio-hang" element={<CustomerOnly><Load><CartPage /></Load></CustomerOnly>} />
       <Route path="thanh-toan" element={<CustomerOnly><Load><CheckoutPage /></Load></CustomerOnly>} />
       <Route path="don-hang" element={<CustomerOnly><Load><OrderHistoryPage /></Load></CustomerOnly>} />

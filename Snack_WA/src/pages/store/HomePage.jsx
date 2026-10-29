@@ -301,6 +301,21 @@ export default function HomePage() {
     return products.slice(0, 4);
   }, [products]);
 
+  // Các sản phẩm bán chạy nhất: Sắp xếp theo số lượt bán (daBan) giảm dần
+  const bestSellerProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return [...products]
+      .sort((a, b) => {
+        const soldA = Number(a.daBan ?? 0);
+        const soldB = Number(b.daBan ?? 0);
+        if (soldB !== soldA) return soldB - soldA;
+        if (b.laBanChay && !a.laBanChay) return 1;
+        if (!b.laBanChay && a.laBanChay) return -1;
+        return (Number(b.diemTrungBinh) || 0) - (Number(a.diemTrungBinh) || 0);
+      })
+      .slice(0, 8);
+  }, [products]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
       
@@ -916,6 +931,20 @@ export default function HomePage() {
             }}>
               🚚 Freeship đơn từ 150K
             </div>
+            <Link to="/combo">
+              <Button 
+                type="primary" 
+                style={{ 
+                  borderRadius: 10, 
+                  fontWeight: 700, 
+                  background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(234, 88, 12, 0.25)'
+                }}
+              >
+                Xem 20+ Combo →
+              </Button>
+            </Link>
             <Space>
               <Button 
                 shape="circle" 
@@ -1080,7 +1109,7 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <Link to={combo.link} style={{ textDecoration: 'none' }}>
+                    <Link to="/combo" style={{ textDecoration: 'none' }}>
                       <Button 
                         type="primary" 
                         block 
@@ -1098,7 +1127,7 @@ export default function HomePage() {
                           gap: 8
                         }}
                       >
-                        Khám phá set này <ArrowRightOutlined />
+                        Khám phá các combo <ArrowRightOutlined />
                       </Button>
                     </Link>
                   </div>
@@ -1157,9 +1186,9 @@ export default function HomePage() {
               </Col>
             ))}
           </Row>
-        ) : products.length > 0 ? (
+        ) : bestSellerProducts.length > 0 ? (
           <Row gutter={[20, 20]}>
-            {products.slice(0, 8).map((p, idx) => (
+            {bestSellerProducts.map((p, idx) => (
               <Col xs={24} sm={12} md={6} key={p.maSanPham}>
                 <div className="snack-card">
                   <div className="snack-card-cover">
