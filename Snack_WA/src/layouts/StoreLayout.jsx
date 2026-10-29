@@ -16,7 +16,8 @@ import {
   SafetyCertificateOutlined,
   SyncOutlined,
   GiftOutlined,
-  OrderedListOutlined
+  OrderedListOutlined,
+  FireOutlined
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../shared/auth/authStore';
@@ -97,6 +98,18 @@ export default function StoreLayout() {
       key: '/san-pham',
       icon: <AppstoreOutlined />,
       label: <Link to="/san-pham">Món ăn vặt</Link>,
+    },
+    {
+      key: '/combo',
+      icon: <FireOutlined style={{ color: '#ea580c' }} />,
+      label: (
+        <Link to="/combo" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>Combo Ưu Đãi</span>
+          <Tag color="volcano" style={{ margin: 0, fontSize: '10px', padding: '0 5px', lineHeight: '16px', borderRadius: 4 }}>
+            HOT
+          </Tag>
+        </Link>
+      ),
     },
   ];
 
@@ -188,18 +201,19 @@ export default function StoreLayout() {
           items={menuItems}
         />
 
+        {/* Thanh tìm kiếm trên header: ẩn khi người dùng đã đăng nhập để nhường chỗ cho Menu & Session */}
         {!token && (
-        <div className="store-search">
-          <Input
-            placeholder="Tìm khô gà, bánh tráng, cơm cháy..."
-            prefix={<SearchOutlined style={{ color: '#ea580c' }} />}
-            onPressEnter={(event) => {
-              if (event.target.value.trim()) {
-                navigate(`/san-pham?q=${encodeURIComponent(event.target.value.trim())}`);
-              }
-            }}
-          />
-        </div>
+          <div className="store-search">
+            <Input
+              placeholder="Tìm khô gà, bánh tráng, cơm cháy..."
+              prefix={<SearchOutlined style={{ color: '#ea580c' }} />}
+              onPressEnter={(event) => {
+                if (event.target.value.trim()) {
+                  navigate(`/san-pham?q=${encodeURIComponent(event.target.value.trim())}`);
+                }
+              }}
+            />
+          </div>
         )}
 
         <Space size="middle">
@@ -453,6 +467,13 @@ function BottomNav({ pathname, token, cartCount }) {
       active: pathname.startsWith('/san-pham'),
     },
     {
+      key: 'combos',
+      label: 'Combo',
+      path: '/combo',
+      icon: <FireOutlined />,
+      active: pathname.startsWith('/combo'),
+    },
+    {
       key: 'cart',
       label: 'Giỏ hàng',
       path: '/gio-hang',
@@ -462,13 +483,6 @@ function BottomNav({ pathname, token, cartCount }) {
         </Badge>
       ),
       active: pathname.startsWith('/gio-hang'),
-    },
-    {
-      key: 'orders',
-      label: 'Đơn hàng',
-      path: '/don-hang',
-      icon: <OrderedListOutlined />,
-      active: pathname.startsWith('/don-hang'),
     },
     {
       key: 'account',

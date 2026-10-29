@@ -34,7 +34,7 @@ export default function CartScreen({ navigation }) {
   const [voucherInput, setVoucherInput] = useState('');
 
   const { token } = useAuthStore();
-  const { setCartItems, fetchCart } = useCartStore();
+  const { setCartItems, fetchCart, appliedComboVouchers, getTotalComboSavings, getPrimaryComboVoucherCode } = useCartStore();
 
   const formatVnd = (val) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
@@ -207,6 +207,10 @@ export default function CartScreen({ navigation }) {
   const shippingFee = selectedItems.length > 0 ? (isFreeshipEligible ? 0 : BASE_SHIPPING_FEE) : 0;
   const shippingDiscount = isFreeshipEligible && selectedItems.length > 0 ? BASE_SHIPPING_FEE : 0;
 
+  const comboSavings = (appliedComboVouchers && appliedComboVouchers.length > 0)
+    ? (typeof getTotalComboSavings === 'function' ? getTotalComboSavings() : 0)
+    : 0;
+
   const voucherDiscount =
     appliedVoucher === 'SNACK30' && subtotal >= 99000
       ? 30000
@@ -214,7 +218,7 @@ export default function CartScreen({ navigation }) {
       ? 15000
       : 0;
 
-  const totalDiscount = voucherDiscount + shippingDiscount;
+  const totalDiscount = voucherDiscount + shippingDiscount + comboSavings;
   const grandTotal = Math.max(0, subtotal + (selectedItems.length > 0 ? BASE_SHIPPING_FEE : 0) - totalDiscount);
   const remainingForFreeship = Math.max(0, FREESHIP_THRESHOLD - subtotal);
   const freeshipProgress = Math.min(1, subtotal / FREESHIP_THRESHOLD);
@@ -411,9 +415,41 @@ export default function CartScreen({ navigation }) {
 
                       {/* Price & Stepper */}
                       <View style={styles.itemBottomRow}>
-                        <Text style={styles.itemPrice}>
-                          {formatVnd(item.giaBan)}
-                        </Text>
+                        {(() => {
+                          const matchedCombo = (appliedComboVouchers || []).find((c) =>
+                            (c.itemIds || []).includes(item.maSanPham)
+                          );
+                          if (matchedCombo && matchedCombo.originalPrice > 0 && matchedCombo.comboPrice > 0) {
+                            const discountRatio = matchedCombo.comboPrice / matchedCombo.originalPrice;
+                            const newPrice = Math.round(item.giaBan * discountRatio);
+                            const discountPercent = Math.round((1 - discountRatio) * 100);
+                            return (
+                              <View style={{ flexShrink: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <Text style={styles.itemPrice}>
+                                    {formatVnd(newPrice)}
+                                  </Text>
+                                  <Text style={{ fontSize: 12, color: colors.textMuted, textDecorationLine: 'line-through' }}>
+                                    {formatVnd(item.giaBan)}
+                                  </Text>
+                                  <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#dc2626' }}>
+                                      -{discountPercent}%
+                                    </Text>
+                                  </View>
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: '700', marginTop: 2 }}>
+                                  🎁 Ưu đãi theo {matchedCombo.comboName}
+                                </Text>
+                              </View>
+                            );
+                          }
+                          return (
+                            <Text style={styles.itemPrice}>
+                              {formatVnd(item.giaBan)}
+                            </Text>
+                          );
+                        })()}
 
                         <View style={styles.stepperWrap}>
                           <TouchableOpacity
@@ -573,6 +609,17 @@ export default function CartScreen({ navigation }) {
               </View>
             )}
 
+            {comboSavings > 0 && (
+              <View style={styles.billRow}>
+                <Text style={[styles.billLabel, { color: '#16a34a', fontWeight: '700' }]}>
+                  🎁 Ưu đãi Combo ăn vặt
+                </Text>
+                <Text style={[styles.billValue, { color: '#16a34a', fontWeight: '800' }]}>
+                  -{formatVnd(comboSavings)}
+                </Text>
+              </View>
+            )}
+
             {shippingDiscount > 0 && (
               <View style={styles.billRow}>
                 <Text style={[styles.billLabel, { color: colors.primary }]}>
@@ -654,11 +701,14 @@ export default function CartScreen({ navigation }) {
                 Alert.alert('Chưa chọn món', 'Vui lòng chọn ít nhất một món để thanh toán.');
                 return;
               }
+              const comboCode = getPrimaryComboVoucherCode ? getPrimaryComboVoucherCode() : null;
               navigation.navigate('Checkout', {
                 selectedItems,
                 subtotal,
                 grandTotal,
-                voucherCode: appliedVoucher,
+                voucherCode: appliedVoucher || comboCode,
+                comboVoucherCode: comboCode,
+                comboDiscount: comboSavings,
                 discount: totalDiscount,
               });
             }}

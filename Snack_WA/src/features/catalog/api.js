@@ -8,6 +8,8 @@ export const updateProduct = (id, payload) => apiClient.put(`/san-pham/${id}`, p
 export const updateProductStatus = (id, trangThai) => apiClient.patch(`/san-pham/${id}/trang-thai`, { trangThai }).then(r => r.data);
 export const deleteProduct = (id) => apiClient.delete(`/san-pham/${id}`).then(r => r.data);
 export const getProductReviews = (id) => apiClient.get(`/san-pham/${id}/danh-gia`).then(r => r.data);
+export const getFeaturedReviews = (params = { limit: 12, sapXep: 'moi_nhat' }) => 
+  apiClient.get('/danh-gia/noi-bat', { params }).then(r => r.data);
 
 // Categories
 export const getCategories = () => apiClient.get('/loai-san-pham').then(r => r.data);

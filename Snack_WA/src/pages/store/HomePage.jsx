@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowRightOutlined, 
   ShoppingOutlined, 
+  ShoppingCartOutlined, 
   FireOutlined, 
   ThunderboltOutlined, 
   SafetyCertificateOutlined, 
@@ -16,13 +17,18 @@ import {
   RocketOutlined,
   ShopOutlined,
   LeftOutlined,
-  RightOutlined
+  RightOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress } from 'antd';
-import { Link } from 'react-router-dom';
+import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress, Rate, Avatar } from 'antd';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../shared/auth/authStore';
-import { useProductsQuery, useCategories } from '../../features/catalog/hooks';
-import { formatVnd } from '../../shared/utils/formatters';
+import { useProductsQuery, useCategories, useFeaturedReviews } from '../../features/catalog/hooks';
+import { formatVnd, formatDate } from '../../shared/utils/formatters';
+import { SNACK_COMBOS } from '../../shared/constants/snackCombos';
+import { useComboCartStore } from '../../features/cart/comboCartStore';
+import { addToCart } from '../../features/cart/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 const fallbackSnackCategories = [
   { name: 'Khô gà lá chanh', emoji: '🍗', tag: 'Bán chạy nhất' },
@@ -52,152 +58,126 @@ const flattenCategoryTree = (nodes = [], depth = 0) => {
   return result;
 };
 
-// 7 Set combo ăn vặt chuẩn vị mix từ các món thật trong shop (Khô gà, Khô bò, Bánh tráng, Cơm cháy, Da heo...)
-const SNACK_COMBOS = [
+// Danh sách 5 Banner thiết kế phong phú, bắt mắt chạy slide ở đầu trang chủ
+const HOME_BANNERS = [
   {
-    id: 'combo-1',
-    name: 'Set Cày Phim Thâu Đêm',
-    subtitle: 'Dành cho 2 - 3 người',
-    tag: '🏆 BÁN CHẠY NHẤT',
-    tagBg: '#ea580c',
-    emoji: '🎬🍿',
-    items: [
-      { name: '1 Hũ Khô gà lá chanh thơm lừng', spec: 'Hũ 200g' },
-      { name: '2 Bịch Bánh tráng sa tế cay xé lưỡi', spec: '2 x 49g' },
-      { name: '1 Gói Rong biển sấy giòn ngũ vị', spec: 'Giòn tan' },
-      { name: '1 Bịch Bánh tráng phơi sương muối tép', spec: 'Tây Ninh' }
-    ],
-    originalPrice: 185000,
-    comboPrice: 149000,
-    discountPct: 20,
-    savingsText: 'Tiết kiệm 36.000đ',
-    link: '/san-pham?q=khô%20gà',
-    isHot: true
+    id: 'combo-hot',
+    badgeIcon: '🔥',
+    badgeText: 'SIÊU COMBO 2026 • TIẾT KIỆM ĐẾN 35%',
+    title: '20+ Combo Ăn Vặt Chuẩn Vị, Siêu Tiết Kiệm',
+    subtitle: 'Thưởng thức trọn vẹn khô gà, khô bò, bánh tráng dẻo & cơm cháy đáy nồi. Tự động áp mã voucher ngầm cực sâu!',
+    primaryCtaText: 'Săn Combo Ngay',
+    primaryCtaLink: '/combo',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #ff5e14 0%, #ea580c 55%, #c2410c 100%)',
+    boxShadow: '0 12px 32px rgba(234, 88, 12, 0.25)',
+    highlightTag: 'HOT DEAL COMBO',
+    highlightMain: 'Chỉ Từ 39K',
+    highlightSub: 'Tặng kèm Voucher 30K',
+    tags: ['🍗 20 Combo Có Sẵn', '🏷️ Giảm Đến 35%', '⚡ Tự Động Áp Mã'],
+    mascotLabel: 'COMBO HOT',
   },
   {
-    id: 'combo-2',
-    name: 'Set Văn Phòng Siêu Cay Bốc',
-    subtitle: 'Dành cho 4 - 6 người',
-    tag: '🔥 SIÊU CAY BỐC',
-    tagBg: '#dc2626',
-    emoji: '💼🌶️',
-    items: [
-      { name: '2 Hũ Khô gà bơ tỏi giòn rụm', spec: '2 x 100g' },
-      { name: '2 Bịch Bánh tráng phơi sương chấm tắc', spec: 'Cay nồng' },
-      { name: '1 Hũ Khô bò tẩm vị Tây Bắc', spec: 'Hũ 50g' },
-      { name: '1 Hũ Da heo lắc mắm hành giòn rụm', spec: 'Hũ 200g' }
-    ],
-    originalPrice: 260000,
-    comboPrice: 219000,
-    discountPct: 16,
-    savingsText: 'Tiết kiệm 41.000đ',
-    link: '/san-pham?q=da%20heo',
-    isHot: true
+    id: 'flash-sale-do-kho',
+    badgeIcon: '⚡',
+    badgeText: 'FLASH SALE ĐẶC BIỆT • GIẢM TỚI 50%',
+    title: 'Khô Gà Lá Chanh & Khô Bò Cay Nồng',
+    subtitle: '100% ức gà tươi xé sợi dai mềm, bò tẩm vị đậm đà không phẩm màu. Hũ seal nhôm giòn rụm cả tuần!',
+    primaryCtaText: 'Khám Phá Đồ Khô',
+    primaryCtaLink: '/san-pham?q=khô',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #e11d48 0%, #be123c 55%, #881337 100%)',
+    boxShadow: '0 12px 32px rgba(190, 18, 60, 0.25)',
+    highlightTag: 'GIÒN RỤM ĐẬM VỊ',
+    highlightMain: 'Top 1 Bán Chạy',
+    highlightSub: 'Hơn 12.000 hũ đã bán',
+    tags: ['🥩 Thịt Tươi 100%', '🌿 Thơm Nức Lá Chanh', '🛡️ Chuẩn ATVSTP'],
+    mascotLabel: 'ĐỒ KHÔ ĐẬM VỊ',
   },
   {
-    id: 'combo-3',
-    name: 'Set Giòn Tan Tuổi Thơ',
-    subtitle: 'Thưởng thức trọn vẹn (2 - 3 người)',
-    tag: '✨ TUỔI THƠ GẦN GŨI',
-    tagBg: '#d97706',
-    emoji: '🎈🍘',
-    items: [
-      { name: '1 Bịch Cơm cháy chà bông đáy nồi', spec: '250g giòn rụm' },
-      { name: '1 Hũ Khô gà rong biển ngũ vị', spec: 'Hũ đậm vị' },
-      { name: '2 Set Bánh tráng phô mai béo thơm', spec: '2 x 50g' },
-      { name: '1 Set Bánh tráng cuộn muối tép', spec: '50g' }
-    ],
-    originalPrice: 165000,
-    comboPrice: 129000,
-    discountPct: 22,
-    savingsText: 'Tiết kiệm 36.000đ',
-    link: '/san-pham?q=cơm%20cháy',
-    isHot: false
+    id: 'banh-trang-tay-ninh',
+    badgeIcon: '🌯',
+    badgeText: 'ĐẶC SẢN TÂY NINH • CAY XÉ LƯỠI',
+    title: 'Bánh Tráng Phơi Sương Cuộn Tóp Mỡ',
+    subtitle: 'Bánh tráng phơi sương dẻo quẹo chấm sốt bơ trứng gà & sate tôm cay nồng, ăn nhâm nhi là hết sảy!',
+    primaryCtaText: 'Mua Bánh Tráng',
+    primaryCtaLink: '/san-pham?q=bánh%20tráng',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #d97706 0%, #b45309 55%, #78350f 100%)',
+    boxShadow: '0 12px 32px rgba(180, 83, 9, 0.25)',
+    highlightTag: 'MÓN GÂY NGHIỆN',
+    highlightMain: 'Bánh Tráng Cay',
+    highlightSub: 'Sốt bơ tắc đậm đà',
+    tags: ['🌶️ Cay Nồng Sate', '🧈 Sốt Bơ Trứng Béo', '🥢 Dẻo Quẹo Phơi Sương'],
+    mascotLabel: 'BÁNH TRÁNG CAY',
   },
   {
-    id: 'combo-4',
-    name: 'Set Đại Tiệc Da Heo & Cơm Cháy',
-    subtitle: 'Dành cho 3 - 5 người',
-    tag: '🥓 GIÒN RỤM TỘT ĐỈNH',
-    tagBg: '#b45309',
-    emoji: '🥓🤤',
-    items: [
-      { name: '1 Hũ Da heo lắc tỏi ớt cay tê', spec: 'Hũ 200g' },
-      { name: '1 Hũ Da heo lắc phô mai béo ngậy', spec: 'Hũ 200g' },
-      { name: '1 Gói Cơm cháy gạo lứt rong biển', spec: 'Gói 250g' },
-      { name: '1 Gói Cơm cháy mắm hành giòn tan', spec: 'Gói 250g' }
-    ],
-    originalPrice: 285000,
-    comboPrice: 235000,
-    discountPct: 18,
-    savingsText: 'Tiết kiệm 50.000đ',
-    link: '/san-pham?q=da%20heo',
-    isHot: false
+    id: 'freeship-2h',
+    badgeIcon: '🚚',
+    badgeText: 'FREESHIP TOÀN QUỐC • GIAO TẬN CỬA',
+    title: 'Miễn Phí Vận Chuyển Đơn Ăn Vặt Từ 99K',
+    subtitle: 'Đóng gói 3 lớp chống ẩm siêu kỹ lưỡng. Đặt đơn là ship, nhận hàng giòn ngon tận tay chỉ trong 2 Giờ!',
+    primaryCtaText: 'Lên Đơn Ngay',
+    primaryCtaLink: '/san-pham',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #0d9488 0%, #0f766e 55%, #134e4a 100%)',
+    boxShadow: '0 12px 32px rgba(15, 118, 110, 0.25)',
+    highlightTag: 'ĐẶC QUYỀN SHIP',
+    highlightMain: 'Freeship 0Đ',
+    highlightSub: 'Áp dụng từ đơn 99K',
+    tags: ['⚡ Giao Nhanh 2H', '📦 Đóng Thùng Kín', '🔄 1-Đổi-1 Miễn Phí'],
+    mascotLabel: 'GIAO SIÊU TỐC',
   },
   {
-    id: 'combo-5',
-    name: 'Set Bánh Tráng Gây Nghiện Tây Ninh',
-    subtitle: 'Dành cho 2 - 4 tín đồ bánh tráng',
-    tag: '🌯 TRÙM BÁNH TRÁNG',
-    tagBg: '#059669',
-    emoji: '🌯🌶️',
-    items: [
-      { name: '1 Set Bánh tráng cuốn bơ siêu béo', spec: 'Đầy đủ bơ tép' },
-      { name: '1 Bánh tráng phơi sương muối hành phi', spec: 'Dẻo mềm 50g' },
-      { name: '1 Bánh tráng rong biển cháy tỏi', spec: 'Gói 50g' },
-      { name: '1 Bánh tráng cuộn muối tép Tây Ninh', spec: 'Gói 50g' }
-    ],
-    originalPrice: 145000,
-    comboPrice: 115000,
-    discountPct: 21,
-    savingsText: 'Tiết kiệm 30.000đ',
-    link: '/san-pham?q=bánh%20tráng',
-    isHot: false
-  },
-  {
-    id: 'combo-6',
-    name: 'Set Lai Rai Mồi Bén Cực Đã',
-    subtitle: 'Dành cho 3 - 6 người tụ tập',
-    tag: '🍻 MỒI BÉN LAI RAI',
-    tagBg: '#7c3aed',
-    emoji: '🍻🥩',
-    items: [
-      { name: '1 Hũ Khô heo miếng thượng hạng', spec: 'Hũ 200g' },
-      { name: '1 Gói Khô heo cháy tỏi thơm bùi', spec: 'Gói 50g' },
-      { name: '1 Hũ Khô bò viên cay tê', spec: 'Hũ 50g' },
-      { name: '1 Gói Khô heo cay Tứ Xuyên', spec: 'Gói 25g' }
-    ],
-    originalPrice: 250000,
-    comboPrice: 199000,
-    discountPct: 20,
-    savingsText: 'Tiết kiệm 51.000đ',
-    link: '/san-pham?q=khô%20heo',
-    isHot: false
-  },
-  {
-    id: 'combo-7',
-    name: 'Set Thập Cẩm Ăn Vặt All-In-One',
-    subtitle: 'Đại tiệc nhóm 5 - 8 người',
-    tag: '👑 ĐẠI TIỆC FULL TOPPING',
-    tagBg: '#0284c7',
-    emoji: '👑🎉',
-    items: [
-      { name: '1 Hũ Khô gà cháy tỏi đặc biệt', spec: 'Hũ lớn giòn rụm' },
-      { name: '1 Hũ Khô heo sấy cay đậm đà', spec: 'Hũ 200g' },
-      { name: '1 Hũ Da heo lắc mắm hành', spec: 'Hũ 200g' },
-      { name: '1 Gói Cơm cháy mắm hành đáy nồi', spec: 'Gói 250g' },
-      { name: '2 Bịch Bánh tráng sa tế cay xé', spec: '2 x 49g' }
-    ],
-    originalPrice: 340000,
-    comboPrice: 279000,
-    discountPct: 18,
-    savingsText: 'Tiết kiệm 61.000đ',
-    link: '/san-pham',
-    isHot: true
+    id: 'app-apk-snackshop',
+    badgeIcon: '📲',
+    badgeText: 'TRẢI NGHIỆM TIỆN LỢI • TẶNG VOUCHER 30K',
+    title: 'Tải Ứng Dụng SnackShop Android APK',
+    subtitle: 'Nhận thông báo cập nhật đơn hàng tức thì, lưu mã voucher và tích điểm đổi quà ăn vặt mỗi ngày.',
+    primaryCtaText: 'Tải APK Ngay',
+    primaryCtaLink: '/downloads/snackshop.apk',
+    isDownload: true,
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #6366f1 0%, #4f46e5 55%, #312e81 100%)',
+    boxShadow: '0 12px 32px rgba(79, 70, 229, 0.25)',
+    highlightTag: 'APP ĐỘC QUYỀN',
+    highlightMain: 'Tặng 30.000đ',
+    highlightSub: 'Dành cho đơn đầu tiên',
+    tags: ['🎁 Tặng Voucher 30K', '⚡ 1 Chạm Đặt Món', '🔔 Cập Nhật Đơn Tức Thì'],
+    mascotLabel: 'SNACKSHOP APP',
   }
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const token = useAuthStore((state) => state.token);
+  const addComboVoucher = useComboCartStore((state) => state.addComboVoucher);
+  const [addingComboId, setAddingComboId] = useState(null);
+
+  const handleQuickAddCombo = async (combo, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    if (!token) {
+      message.warning('Vui lòng đăng nhập để thêm combo vào giỏ hàng');
+      navigate('/dang-nhap');
+      return;
+    }
+
+    try {
+      setAddingComboId(combo.id);
+      for (const item of combo.items) {
+        await addToCart({
+          maSanPham: item.maSanPham,
+          soLuong: item.soLuong || 1,
+        });
+      }
+      addComboVoucher(combo);
+      await queryClient.invalidateQueries({ queryKey: ['cart'] });
+      message.success(`Đã thêm trọn bộ "${combo.name}" vào giỏ hàng! Tiết kiệm ${formatVnd(combo.savedAmount || 0)}.`);
+    } catch (err) {
+      message.error(err.response?.data?.message || 'Không thể thêm combo lúc này');
+    } finally {
+      setAddingComboId(null);
+    }
+  };
+
   const role = useAuthStore((state) => state.user?.vaiTro || state.user?.role);
   const { data, isLoading } = useProductsQuery({ page: 1, pageSize: 12, sapXep: 'ban_chay' });
   const { data: rawCategories = [] } = useCategories();
@@ -225,6 +205,26 @@ export default function HomePage() {
   const handleCopyVoucher = (code) => {
     navigator.clipboard.writeText(code);
     message.success(`Đã sao chép mã ưu đãi "${code}" vào bộ nhớ tạm!`);
+  };
+
+  // Multi-Banner Slider State (Tự động lướt banner mỗi 4.5s, tạm dừng khi hover)
+  const [bannerSlideIndex, setBannerSlideIndex] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+
+  useEffect(() => {
+    if (isBannerPaused) return;
+    const bannerTimer = setInterval(() => {
+      setBannerSlideIndex((prev) => (prev >= HOME_BANNERS.length - 1 ? 0 : prev + 1));
+    }, 4500);
+    return () => clearInterval(bannerTimer);
+  }, [isBannerPaused]);
+
+  const handleBannerPrev = () => {
+    setBannerSlideIndex((prev) => (prev <= 0 ? HOME_BANNERS.length - 1 : prev - 1));
+  };
+
+  const handleBannerNext = () => {
+    setBannerSlideIndex((prev) => (prev >= HOME_BANNERS.length - 1 ? 0 : prev + 1));
   };
 
   // Slider cho 7 combo sản phẩm (hiển thị 3 combo trên desktop, tự động trượt qua mỗi 3.5s)
@@ -268,29 +268,52 @@ export default function HomePage() {
     setComboSlideIndex((prev) => (prev >= comboMaxIndex ? 0 : prev + 1));
   };
 
-  // Danh mục hiển thị (lấy thực tế từ API /loai-san-pham)
-  const displayCategories = useMemo(() => {
-    const flattened = flattenCategoryTree(rawCategories || []);
-    if (!flattened || flattened.length === 0) return fallbackSnackCategories;
-    return flattened.slice(0, 6).map((cat) => {
-      const lower = cat.name.toLowerCase();
-      let emoji = '🍘';
-      if (lower.includes('gà')) emoji = '🍗';
-      else if (lower.includes('bò')) emoji = '🥩';
-      else if (lower.includes('heo') || lower.includes('chà bông')) emoji = '🥓';
-      else if (lower.includes('bánh tráng')) emoji = '🌯';
-      else if (lower.includes('mực') || lower.includes('cá')) emoji = '🦑';
-      else if (lower.includes('khoai') || lower.includes('bắp') || lower.includes('ngô')) emoji = '🍿';
-      else if (lower.includes('trái cây') || lower.includes('xoài')) emoji = '🥭';
-      else if (lower.includes('khô')) emoji = '🥢';
-      return {
-        id: cat.id,
-        name: cat.name,
-        emoji,
-        tag: cat.isChild ? 'Mục con' : 'Đặc sản',
-      };
-    });
-  }, [rawCategories]);
+  // Lấy dữ liệu đánh giá thực tế từ database (ưu tiên mới nhất)
+  const { data: rawReviews = [], isLoading: isLoadingReviews } = useFeaturedReviews({ limit: 15, sapXep: 'moi_nhat' });
+  const sortedReviews = useMemo(() => {
+    if (!rawReviews || !Array.isArray(rawReviews)) return [];
+    return [...rawReviews].sort((a, b) => new Date(b.ngayTao || 0) - new Date(a.ngayTao || 0));
+  }, [rawReviews]);
+
+  // Review Slider State (Hiển thị 3 đánh giá trên desktop, 2 trên tablet, 1 trên mobile)
+  const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
+  const [isReviewPaused, setIsReviewPaused] = useState(false);
+  const [reviewItemsPerView, setReviewItemsPerView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 640) return 1;
+      if (window.innerWidth < 1024) return 2;
+      return 3;
+    }
+    return 3;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) setReviewItemsPerView(1);
+      else if (window.innerWidth < 1024) setReviewItemsPerView(2);
+      else setReviewItemsPerView(3);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const reviewMaxIndex = Math.max(0, sortedReviews.length - reviewItemsPerView);
+
+  useEffect(() => {
+    if (isReviewPaused || sortedReviews.length <= reviewItemsPerView) return;
+    const interval = setInterval(() => {
+      setReviewSlideIndex((prev) => (prev >= reviewMaxIndex ? 0 : prev + 1));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isReviewPaused, reviewMaxIndex, sortedReviews.length, reviewItemsPerView]);
+
+  const handleReviewPrev = () => {
+    setReviewSlideIndex((prev) => (prev <= 0 ? reviewMaxIndex : prev - 1));
+  };
+
+  const handleReviewNext = () => {
+    setReviewSlideIndex((prev) => (prev >= reviewMaxIndex ? 0 : prev + 1));
+  };
 
   // Các sản phẩm Flash Sale (lọc các món có khuyến mãi thật, nếu chưa có thì lấy top 4 bán chạy)
   const flashSaleProducts = useMemo(() => {
@@ -301,251 +324,396 @@ export default function HomePage() {
     return products.slice(0, 4);
   }, [products]);
 
+  // Các sản phẩm bán chạy nhất: Sắp xếp theo số lượt bán (daBan) giảm dần
+  const bestSellerProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return [...products]
+      .sort((a, b) => {
+        const soldA = Number(a.daBan ?? 0);
+        const soldB = Number(b.daBan ?? 0);
+        if (soldB !== soldA) return soldB - soldA;
+        if (b.laBanChay && !a.laBanChay) return 1;
+        if (!b.laBanChay && a.laBanChay) return -1;
+        return (Number(b.diemTrungBinh) || 0) - (Number(a.diemTrungBinh) || 0);
+      })
+      .slice(0, 8);
+  }, [products]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
       
-      {/* 1. Hero Banner Sinh Động (Stitch Style) */}
+      {/* 1. Hero Multi-Banner Slider (Thiết kế nhỏ gọn, tinh tế & chạy slide 5 banner) */}
       <section 
+        onMouseEnter={() => setIsBannerPaused(true)}
+        onMouseLeave={() => setIsBannerPaused(false)}
         style={{
           position: 'relative',
+          borderRadius: 22,
           overflow: 'hidden',
-          borderRadius: 28,
-          padding: 'clamp(32px, 5vw, 56px)',
-          color: '#ffffff',
-          background: 'radial-gradient(130% 130% at 85% 15%, #ff6f26 0%, #f5520d 62%, #d93f02 100%)',
-          boxShadow: '0 20px 48px rgba(217, 63, 2, 0.28)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 32,
-          flexWrap: 'wrap'
+          boxShadow: '0 10px 28px rgba(0, 0, 0, 0.08)',
         }}
       >
-        {/* Glow Circles Decoration */}
-        <div style={{
-          position: 'absolute',
-          top: -70,
-          right: -70,
-          width: 320,
-          height: 320,
-          borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.12)',
-          filter: 'blur(40px)',
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: -60,
-          left: '20%',
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: 'rgba(251, 191, 36, 0.15)',
-          filter: 'blur(50px)',
-          pointerEvents: 'none'
-        }} />
-
-        {/* Cột trái: Tiêu đề & CTAs */}
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 640 }}>
-          <div 
-            className="badge-shimmer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              backdropFilter: 'blur(8px)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.85rem',
-              padding: '6px 16px',
-              borderRadius: 30,
-              marginBottom: 16,
-              border: '1px solid rgba(255, 255, 255, 0.35)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <FireOutlined style={{ color: '#fde047', fontSize: 15 }} />
-            <span>THẾ GIỚI ĂN VẶT CHUẨN VỊ VIỆT</span>
-          </div>
-          
-          <Typography.Title 
-            style={{ 
-              color: '#ffffff', 
-              fontSize: 'clamp(2.1rem, 4.2vw, 3.4rem)', 
-              fontWeight: 900, 
-              lineHeight: 1.15, 
-              margin: '0 0 16px',
-              textShadow: '0 2px 10px rgba(67, 20, 7, 0.35)',
-              letterSpacing: '-0.5px'
-            }}
-          >
-            Đậm Vị Việt, Giòn Rụm & Vui Mê Say!
-          </Typography.Title>
-          
-          <Typography.Paragraph 
-            style={{ 
-              color: '#ffedd5', 
-              fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', 
-              maxWidth: 580, 
-              marginBottom: 26, 
-              lineHeight: 1.65 
-            }}
-          >
-            Chọn ngay các món ăn vặt thơm ngon nức tiếng: <strong>Khô gà lá chanh</strong> thơm lừng, <strong>Bánh tráng Tây Ninh</strong> cay xé lưỡi, <strong>Cơm cháy giòn tan</strong> rợp chà bông... Đóng gói kín sạch sẽ, giao siêu tốc tận tay chỉ trong <strong>2 Giờ</strong>!
-          </Typography.Paragraph>
-
-          <Space size="middle" wrap align="center">
-            <Link to="/san-pham">
-              <Button 
-                type="primary" 
-                size="large" 
-                icon={<ShoppingOutlined />}
-                style={{ 
-                  height: 50, 
-                  paddingInline: 30, 
-                  fontSize: '1rem', 
-                  fontWeight: 800,
-                  background: '#ffffff',
-                  color: '#ea580c',
-                  border: 'none',
-                  boxShadow: '0 8px 24px rgba(67, 20, 7, 0.3)',
-                  borderRadius: 14,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}
-              >
-                Khám phá món ngon
-              </Button>
-            </Link>
-
-            <div 
+        <div 
+          style={{
+            display: 'flex',
+            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            transform: `translateX(-${bannerSlideIndex * 100}%)`,
+            width: '100%',
+          }}
+        >
+          {HOME_BANNERS.map((banner) => (
+            <div
+              key={banner.id}
               style={{
-                display: 'inline-flex',
+                flex: '0 0 100%',
+                minWidth: '100%',
+                maxWidth: '100%',
+                position: 'relative',
+                background: banner.gradient,
+                boxShadow: banner.boxShadow,
+                padding: 'clamp(22px, 3.5vw, 32px) clamp(48px, 5.5vw, 68px)',
+                color: '#ffffff',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                background: 'rgba(0, 0, 0, 0.22)',
-                backdropFilter: 'blur(8px)',
-                padding: '8px 16px',
-                borderRadius: 14,
-                border: '1px solid rgba(255, 255, 255, 0.2)'
+                justifyContent: 'space-between',
+                gap: 24,
+                boxSizing: 'border-box',
+                minHeight: 250,
+                flexWrap: 'wrap',
               }}
             >
-              <div style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: 'rgba(253, 224, 71, 0.25)',
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fde047',
-                fontSize: 16
-              }}>
-                <ThunderboltOutlined />
-              </div>
-              <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#ffffff' }}>Giao Hỏa Tốc 2H</div>
-                <div style={{ fontSize: '0.72rem', color: '#fef08a' }}>Nội thành TP.HCM & Hà Nội</div>
-              </div>
-            </div>
+              {/* Background ambient glow circles */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -50,
+                  right: -50,
+                  width: 240,
+                  height: 240,
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  filter: 'blur(35px)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -40,
+                  left: '25%',
+                  width: 200,
+                  height: 200,
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  filter: 'blur(35px)',
+                  pointerEvents: 'none',
+                }}
+              />
 
-            {role === 'khach_hang' && (
-              <Link to="/gio-hang">
-                <Button 
-                  size="large"
-                  style={{ 
-                    height: 50, 
-                    paddingInline: 20, 
-                    borderRadius: 14,
-                    background: 'rgba(255, 255, 255, 0.15)',
+              {/* Left Column: Title, Subtitle, Badges & CTA */}
+              <div style={{ position: 'relative', zIndex: 2, flex: '1 1 500px', maxWidth: 660 }}>
+                {/* Badge */}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(8px)',
                     color: '#ffffff',
-                    borderColor: 'rgba(255, 255, 255, 0.4)',
-                    fontWeight: 700,
-                    backdropFilter: 'blur(8px)'
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    marginBottom: 10,
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    letterSpacing: '0.4px',
                   }}
                 >
-                  Giỏ hàng của bạn
-                </Button>
-              </Link>
-            )}
-          </Space>
-        </div>
+                  <span>{banner.badgeIcon}</span>
+                  <span>{banner.badgeText}</span>
+                </div>
 
-        {/* Cột phải: Mascot Collage Card (Theo thiết kế Stitch) */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center', flex: '1 1 280px', maxWidth: 360 }}>
-          <div 
-            style={{
-              position: 'relative',
-              background: 'rgba(255, 255, 255, 0.12)',
-              backdropFilter: 'blur(16px)',
-              borderRadius: 24,
-              padding: 20,
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
-              width: '100%',
-              textAlign: 'center'
-            }}
-          >
-            {/* Hot deal sticker */}
-            <div className="hot-deal-sticker">
-              🔥 SIÊU ƯU ĐÃI
-            </div>
+                {/* Title */}
+                <Typography.Title
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 'clamp(1.35rem, 2.5vw, 1.85rem)',
+                    fontWeight: 900,
+                    lineHeight: 1.25,
+                    margin: '0 0 8px',
+                    letterSpacing: '-0.3px',
+                    textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  }}
+                >
+                  {banner.title}
+                </Typography.Title>
 
-            <div style={{
-              background: 'rgba(46, 20, 8, 0.4)',
-              borderRadius: 18,
-              padding: '24px 16px',
-              border: '1px solid rgba(254, 215, 170, 0.25)'
-            }}>
-              {/* Mascot Stamp tròn lớn */}
-              <div style={{
-                width: 140,
-                height: 140,
-                margin: '0 auto 16px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #facc15 0%, #ea580c 100%)',
-                padding: 6,
-                boxShadow: '0 12px 24px rgba(0, 0, 0, 0.35)',
-                display: 'grid',
-                placeItems: 'center'
-              }}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: '#2e1408',
-                  border: '3px solid #fef08a',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 8
-                }}>
-                  <img 
-                    src="/logo.png" 
-                    alt="Snack Shop Mascot" 
-                    style={{ width: 56, height: 56, objectFit: 'contain', marginBottom: 4 }} 
-                  />
-                  <span style={{ fontSize: '12px', fontWeight: 900, color: '#ffffff', letterSpacing: '0.5px' }}>
-                    SNACK<span style={{ color: '#facc15' }}>SHOP</span>
-                  </span>
-                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#fde047', textTransform: 'uppercase' }}>
-                    100% Sạch & Giòn
-                  </span>
+                {/* Subtitle */}
+                <Typography.Paragraph
+                  style={{
+                    color: '#ffedd5',
+                    fontSize: 'clamp(0.85rem, 1.1vw, 0.95rem)',
+                    maxWidth: 580,
+                    margin: '0 0 16px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {banner.subtitle}
+                </Typography.Paragraph>
+
+                {/* Actions & Tags */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {banner.isDownload ? (
+                    <a
+                      href={banner.primaryCtaLink}
+                      download="SnackShop.apk"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Button
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        style={{
+                          height: 38,
+                          paddingInline: 20,
+                          fontSize: '0.88rem',
+                          fontWeight: 800,
+                          background: '#ffffff',
+                          color: '#4f46e5',
+                          border: 'none',
+                          borderRadius: 12,
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {banner.primaryCtaText}
+                      </Button>
+                    </a>
+                  ) : (
+                    <Link to={banner.primaryCtaLink}>
+                      <Button
+                        type="primary"
+                        icon={<ShoppingOutlined />}
+                        style={{
+                          height: 38,
+                          paddingInline: 20,
+                          fontSize: '0.88rem',
+                          fontWeight: 800,
+                          background: '#ffffff',
+                          color: '#ea580c',
+                          border: 'none',
+                          borderRadius: 12,
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {banner.primaryCtaText}
+                      </Button>
+                    </Link>
+                  )}
+
+                  {/* Micro tags */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {banner.tags.map((tag, tIdx) => (
+                      <span
+                        key={tIdx}
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.22)',
+                          backdropFilter: 'blur(6px)',
+                          padding: '4px 10px',
+                          borderRadius: 8,
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          color: '#fef08a',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* 2 Tag nhỏ cam kết */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, fontSize: '11px', fontWeight: 700 }}>
-                <span style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.15)', color: '#86efac' }}>
-                  🌿 Không phẩm màu
-                </span>
-                <span style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fde047' }}>
-                  🛡️ Chuẩn ATVSTP
-                </span>
+              {/* Right Column: Sleek Compact Glass Card */}
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flex: '0 0 210px',
+                  maxWidth: 240,
+                }}
+              >
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.14)',
+                    backdropFilter: 'blur(14px)',
+                    borderRadius: 18,
+                    padding: '16px 14px',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.2)',
+                    width: '100%',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.28)',
+                      color: '#fef08a',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      display: 'inline-block',
+                      marginBottom: 6,
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {banner.highlightTag}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '1.35rem',
+                      fontWeight: 900,
+                      color: '#ffffff',
+                      lineHeight: 1.2,
+                      marginBottom: 4,
+                      letterSpacing: '-0.3px',
+                    }}
+                  >
+                    {banner.highlightMain}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '0.78rem',
+                      color: '#fed7aa',
+                      fontWeight: 600,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {banner.highlightSub}
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: '1px dashed rgba(255, 255, 255, 0.25)',
+                      paddingTop: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="Logo"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        objectFit: 'contain',
+                        borderRadius: 6,
+                        background: '#fff',
+                        padding: 2,
+                      }}
+                    />
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff' }}>
+                      {banner.mascotLabel}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ))}
+        </div>
+
+        {/* Navigation Arrows */}
+        <Button
+          shape="circle"
+          icon={<LeftOutlined style={{ fontSize: 13 }} />}
+          onClick={handleBannerPrev}
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            width: 34,
+            height: 34,
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#ffffff',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        />
+        <Button
+          shape="circle"
+          icon={<RightOutlined style={{ fontSize: 13 }} />}
+          onClick={handleBannerNext}
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            width: 34,
+            height: 34,
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#ffffff',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        />
+
+        {/* Pill Indicators */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(0, 0, 0, 0.25)',
+            padding: '4px 10px',
+            borderRadius: 20,
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          {HOME_BANNERS.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setBannerSlideIndex(idx)}
+              style={{
+                width: bannerSlideIndex === idx ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: bannerSlideIndex === idx ? '#ffffff' : 'rgba(255, 255, 255, 0.45)',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+              }}
+              title={`Slide ${idx + 1}`}
+            />
+          ))}
         </div>
       </section>
 
@@ -916,6 +1084,20 @@ export default function HomePage() {
             }}>
               🚚 Freeship đơn từ 150K
             </div>
+            <Link to="/combo">
+              <Button 
+                type="primary" 
+                style={{ 
+                  borderRadius: 10, 
+                  fontWeight: 700, 
+                  background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(234, 88, 12, 0.25)'
+                }}
+              >
+                Xem 20+ Combo →
+              </Button>
+            </Link>
             <Space>
               <Button 
                 shape="circle" 
@@ -969,138 +1151,165 @@ export default function HomePage() {
               >
                 <div style={{
                   background: '#ffffff',
-                  borderRadius: 24,
-                  padding: '24px 20px',
-                  border: combo.isHot ? '2px solid #ea580c' : '1.5px solid #fed7aa',
-                  boxShadow: combo.isHot ? '0 12px 30px rgba(234, 88, 12, 0.12)' : '0 6px 20px rgba(0,0,0,0.04)',
+                  borderRadius: 22,
+                  overflow: 'hidden',
+                  border: combo.badge === 'BÁN CHẠY' || combo.discountPercent >= 20 ? '2px solid #ea580c' : '1.5px solid #fed7aa',
+                  boxShadow: '0 8px 24px rgba(234, 88, 12, 0.08)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   height: '100%',
                   position: 'relative'
                 }}>
-                  {combo.isHot && (
-                    <div style={{
+                  {/* Cover image with Badges */}
+                  <div style={{ position: 'relative', paddingTop: '62%', background: '#fff7ed', overflow: 'hidden' }}>
+                    <Link to={`/combo/${combo.id}`}>
+                      <img
+                        src={combo.image}
+                        alt={combo.name}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.35s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.06)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                      />
+                    </Link>
+
+                    <span style={{
                       position: 'absolute',
-                      top: -12,
-                      left: 20,
-                      background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+                      top: 10,
+                      left: 10,
+                      background: combo.badgeColor || '#ea580c',
                       color: '#ffffff',
-                      fontSize: '10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '3px 10px',
+                      borderRadius: 14,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}>
+                      {combo.badge}
+                    </span>
+
+                    <span style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      background: '#dc2626',
+                      color: '#ffffff',
                       fontWeight: 900,
-                      padding: '3px 12px',
-                      borderRadius: 20,
-                      letterSpacing: '0.5px',
-                      boxShadow: '0 4px 10px rgba(234, 88, 12, 0.3)'
+                      fontSize: '11px',
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
                     }}>
-                      ⭐ HOT DEAL ĐƯỢC CHỌN NHIỀU
-                    </div>
-                  )}
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: combo.isHot ? 4 : 0 }}>
-                      <span style={{ 
-                        background: `${combo.tagBg}15`, 
-                        color: combo.tagBg, 
-                        fontWeight: 800, 
-                        fontSize: '11px', 
-                        padding: '4px 10px', 
-                        borderRadius: 8,
-                        border: `1px solid ${combo.tagBg}30`
-                      }}>
-                        {combo.tag}
-                      </span>
-                      <span style={{ fontSize: '12px', color: '#78716c', fontWeight: 600 }}>
-                        {combo.subtitle}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <span style={{ fontSize: 26 }}>{combo.emoji}</span>
-                      <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#1c1917', lineHeight: 1.3 }}>
-                        {combo.name}
-                      </div>
-                    </div>
-
-                    <div style={{ 
-                      background: '#fafaf9', 
-                      borderRadius: 14, 
-                      padding: '12px 14px', 
-                      marginBottom: 16,
-                      border: '1px solid #f5f5f4'
-                    }}>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#a8a29e', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.4px' }}>
-                        Gồm {combo.items.length} món chuẩn vị:
-                      </div>
-                      <ul style={{ paddingLeft: 0, listStyle: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {combo.items.map((it, i) => (
-                          <li key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', color: '#44403c' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 13, flexShrink: 0 }} />
-                              <span style={{ fontWeight: 600 }}>{it.name}</span>
-                            </span>
-                            <span style={{ fontSize: '11px', color: '#78716c', background: '#e7e5e4', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap', marginLeft: 6 }}>
-                              {it.spec}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                      -{combo.discountPercent}%
+                    </span>
                   </div>
 
-                  <div style={{ paddingTop: 14, borderTop: '1px dashed #e7e5e4' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#a8a29e', fontWeight: 600 }}>Giá trọn set:</div>
+                  {/* Body Content */}
+                  <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Tag color="orange" style={{ margin: 0, fontSize: '11px', fontWeight: 700, borderRadius: 6 }}>
+                        {combo.categoryLabel}
+                      </Tag>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b', fontWeight: 700, fontSize: '0.8rem' }}>
+                        <StarFilled />
+                        <span>{combo.rating}</span>
+                        <span style={{ color: '#a8a29e', fontWeight: 400 }}>({combo.reviewCount})</span>
+                      </div>
+                    </div>
+
+                    <Link to={`/combo/${combo.id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        fontWeight: 900,
+                        fontSize: '1.1rem',
+                        color: '#1c1917',
+                        lineHeight: 1.35,
+                        marginBottom: 6,
+                        height: 44,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical'
+                      }}>
+                        {combo.name}
+                      </div>
+                    </Link>
+
+                    <div style={{
+                      background: '#fafaf9',
+                      borderRadius: 10,
+                      padding: '8px 10px',
+                      marginBottom: 12,
+                      border: '1px solid #f5f5f4',
+                      fontSize: '0.78rem',
+                      color: '#78716c',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      lineHeight: 1.45
+                    }}>
+                      🎁 <strong>Gồm:</strong> {combo.items?.map((it) => it.tenSanPham).join(' + ')}
+                    </div>
+
+                    {/* Price and CTA */}
+                    <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px dashed #fed7aa' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          <span style={{ color: '#ea580c', fontWeight: 900, fontSize: '1.35rem' }}>
+                          <span style={{ color: '#dc2626', fontWeight: 900, fontSize: '1.35rem' }}>
                             {formatVnd(combo.comboPrice)}
                           </span>
                           <span style={{ color: '#a8a29e', textDecoration: 'line-through', fontSize: '0.85rem' }}>
                             {formatVnd(combo.originalPrice)}
                           </span>
                         </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ 
-                          background: '#ffedd5', 
-                          color: '#c2410c', 
-                          fontWeight: 800, 
-                          fontSize: '11px', 
-                          padding: '3px 8px', 
-                          borderRadius: 6,
-                          display: 'inline-block',
-                          marginBottom: 2
-                        }}>
-                          -{combo.discountPct}%
+                        <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.78rem' }}>
+                          Tiết kiệm {formatVnd(combo.savedAmount)}
                         </span>
-                        <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>
-                          {combo.savingsText}
-                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <Link to={`/combo/${combo.id}`} style={{ flex: 1 }}>
+                          <Button
+                            block
+                            style={{
+                              height: 40,
+                              borderRadius: 10,
+                              fontWeight: 700,
+                              borderColor: '#fed7aa',
+                              color: '#ea580c'
+                            }}
+                          >
+                            Chi tiết
+                          </Button>
+                        </Link>
+                        <Button
+                          type="primary"
+                          icon={<ShoppingCartOutlined />}
+                          loading={addingComboId === combo.id}
+                          onClick={(e) => handleQuickAddCombo(combo, e)}
+                          style={{
+                            height: 40,
+                            borderRadius: 10,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                            border: 'none',
+                            boxShadow: '0 3px 8px rgba(234, 88, 12, 0.3)'
+                          }}
+                          title="Thêm trọn bộ vào giỏ hàng"
+                        >
+                          Thêm giỏ
+                        </Button>
                       </div>
                     </div>
-
-                    <Link to={combo.link} style={{ textDecoration: 'none' }}>
-                      <Button 
-                        type="primary" 
-                        block 
-                        style={{ 
-                          height: 42, 
-                          borderRadius: 12, 
-                          fontWeight: 800, 
-                          fontSize: '0.92rem',
-                          background: combo.isHot ? 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' : '#ea580c',
-                          border: 'none',
-                          boxShadow: '0 4px 14px rgba(234, 88, 12, 0.25)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8
-                        }}
-                      >
-                        Khám phá set này <ArrowRightOutlined />
-                      </Button>
-                    </Link>
                   </div>
                 </div>
               </div>
@@ -1157,9 +1366,9 @@ export default function HomePage() {
               </Col>
             ))}
           </Row>
-        ) : products.length > 0 ? (
+        ) : bestSellerProducts.length > 0 ? (
           <Row gutter={[20, 20]}>
-            {products.slice(0, 8).map((p, idx) => (
+            {bestSellerProducts.map((p, idx) => (
               <Col xs={24} sm={12} md={6} key={p.maSanPham}>
                 <div className="snack-card">
                   <div className="snack-card-cover">
@@ -1299,55 +1508,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* 6. Danh Mục Món Ăn Vặt Được Yêu Thích */}
-      <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-          <div>
-            <Typography.Title level={3} style={{ margin: 0, color: '#431407', fontWeight: 900, letterSpacing: '-0.3px' }}>
-              Danh Mục Món Ăn Vặt Được Yêu Thích
-            </Typography.Title>
-            <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
-              Đầy đủ các loại đồ khô, bánh tráng cay xé, ăn vặt nhâm nhi xem phim cả ngày
-            </Typography.Text>
-          </div>
-          <Link to="/san-pham" style={{ color: '#ea580c', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.92rem' }}>
-            Xem tất cả danh mục <ArrowRightOutlined />
-          </Link>
-        </div>
-
-        <Row gutter={[16, 16]}>
-          {displayCategories.map((cat, idx) => (
-            <Col xs={12} sm={8} md={4} key={cat.id || idx}>
-              <Link to={cat.id ? `/san-pham?cat=${cat.id}` : `/san-pham?q=${encodeURIComponent(cat.name)}`} style={{ textDecoration: 'none' }}>
-                <Card 
-                  hoverable
-                  style={{ 
-                    textAlign: 'center', 
-                    borderRadius: 20, 
-                    border: '1.5px solid #fed7aa',
-                    background: '#ffffff',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(234, 88, 12, 0.04)'
-                  }}
-                  styles={{ body: { padding: '18px 12px' } }}
-                >
-                  <div style={{ fontSize: 42, marginBottom: 8, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
-                    {cat.emoji}
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#292524', marginBottom: 6 }}>
-                    {cat.name}
-                  </div>
-                  <Tag color="orange" style={{ margin: 0, fontSize: '10px', borderRadius: 6, fontWeight: 700 }}>
-                    {cat.tag}
-                  </Tag>
-                </Card>
-              </Link>
-            </Col>
-          ))}
-        </Row>
-      </section>
-
-      {/* 7. Vì Sao Bạn Sẽ Mê Snack Shop? (Quality Pillars) */}
+      {/* 6. Vì Sao Bạn Sẽ Mê Snack Shop? (Quality Pillars) */}
       <section style={{
         background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)',
         borderRadius: 28,
@@ -1414,117 +1575,229 @@ export default function HomePage() {
         </Row>
       </section>
 
-      {/* 8. Đánh Giá Khách Hàng (Customer Reviews Social Proof) */}
-      <section style={{ marginBottom: 12 }}>
-        <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 32px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-            ⭐ Đánh Giá Thực Tế
-          </span>
-          <Typography.Title level={3} style={{ color: '#431407', fontWeight: 900, margin: '4px 0 8px' }}>
-            Hơn 15.000+ Tín Đồ Ăn Vặt Tin Yêu
-          </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
-            Cảm nhận thật từ các đơn hàng giao mỗi ngày trên khắp cả nước
-          </Typography.Text>
+      {/* 7. Đánh Giá Khách Hàng (Customer Reviews Social Proof - Real Database Data Carousel) */}
+      <section style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>
+              <span style={{ fontSize: 15 }}>⭐</span> Đánh Giá Thực Tế Từ Khách Hàng
+            </div>
+            <Typography.Title level={3} style={{ margin: 0, color: '#431407', fontWeight: 900, letterSpacing: '-0.3px' }}>
+              Cảm Nhận Mới Nhất Về Snack Shop
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
+              Lắng nghe trải nghiệm ẩm thực chân thực từ những thực khách đã thưởng thức
+            </Typography.Text>
+          </div>
+
+          {/* Navigation Controls */}
+          {sortedReviews.length > reviewItemsPerView && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                shape="circle"
+                icon={<LeftOutlined style={{ fontSize: 12 }} />}
+                onClick={handleReviewPrev}
+                style={{
+                  width: 36,
+                  height: 36,
+                  border: '1.5px solid #fed7aa',
+                  color: '#9a3412',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                }}
+              />
+              <Button
+                shape="circle"
+                icon={<RightOutlined style={{ fontSize: 12 }} />}
+                onClick={handleReviewNext}
+                style={{
+                  width: 36,
+                  height: 36,
+                  border: '1.5px solid #fed7aa',
+                  color: '#9a3412',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                }}
+              />
+            </div>
+          )}
         </div>
 
-        <Row gutter={[20, 20]}>
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Khô gà thơm mùi lá chanh nức mũi luôn, không bị bở nát như mấy chỗ khác. Hũ bọc seal nhôm chắc chắn, ăn xong đậy nắp vẫn giòn rụm cả tuần."
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ffedd5', color: '#ea580c', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  HL
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Hoàng Linh</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Nhân viên văn phòng (Hà Nội)</div>
-                </div>
-              </div>
-            </div>
-          </Col>
+        {isLoadingReviews ? (
+          <Row gutter={[16, 16]}>
+            {[1, 2, 3].map((item) => (
+              <Col xs={24} md={8} key={item}>
+                <Card style={{ borderRadius: 20, border: '1px solid #fed7aa80' }}>
+                  <Skeleton active avatar paragraph={{ rows: 3 }} />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        ) : sortedReviews.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#fff', borderRadius: 20, border: '1px solid #fed7aa80' }}>
+            <Typography.Text type="secondary">Chưa có đánh giá nào gần đây.</Typography.Text>
+          </div>
+        ) : (
+          <div
+            onMouseEnter={() => setIsReviewPaused(true)}
+            onMouseLeave={() => setIsReviewPaused(false)}
+            style={{ position: 'relative' }}
+          >
+            <div style={{ overflow: 'hidden', margin: '0 -8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: `translateX(-${reviewSlideIndex * (100 / reviewItemsPerView)}%)`
+                }}
+              >
+                {sortedReviews.map((rev) => (
+                  <div
+                    key={rev.maDanhGia}
+                    style={{
+                      flex: `0 0 ${100 / reviewItemsPerView}%`,
+                      maxWidth: `${100 / reviewItemsPerView}%`,
+                      padding: '0 8px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: 20,
+                        padding: 22,
+                        border: '1.5px solid #fed7aa60',
+                        boxShadow: '0 6px 18px rgba(234, 88, 12, 0.04)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: 250,
+                        height: '100%',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <div>
+                        {/* Rating & Date */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <Rate
+                            disabled
+                            defaultValue={rev.soSao || 5}
+                            style={{ fontSize: 13, color: '#f59e0b' }}
+                          />
+                          <Tag color="orange" style={{ margin: 0, fontSize: '11px', borderRadius: 6, fontWeight: 700, border: 'none', background: '#ffedd5', color: '#ea580c' }}>
+                            {rev.ngayTao ? formatDate(rev.ngayTao) : 'Mới đây'}
+                          </Tag>
+                        </div>
 
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Bánh tráng phơi sương dẻo quẹo, nước sốt tắc cay xè đậm đà. Đặt 2h là shipper giao tới cửa rồi, cày phim mà có mâm này thì hết nước chấm!"
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  MA
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Minh Anh</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Sinh viên ĐHQG TP.HCM</div>
-                </div>
-              </div>
-            </div>
-          </Col>
+                        {/* Review Content */}
+                        <p
+                          style={{
+                            color: '#334155',
+                            fontSize: '0.9rem',
+                            fontStyle: 'italic',
+                            lineHeight: 1.6,
+                            margin: '0 0 14px',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          "{rev.binhLuan || 'Món ăn vặt rất ngon, giao hàng đóng gói cẩn thận!'}"
+                        </p>
+                      </div>
 
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Khô bò tẩm gia vị ăn rất cuốn, sợi to đều màu đẹp. Team công ty mình nghiện order ăn vặt chiều thứ sáu, tuần nào cũng đặt cả combo lớn."
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  QT
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Quốc Tuấn</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Team Lead Media (Quận 1, TP.HCM)</div>
-                </div>
+                      <div>
+                        {/* Tagged Product */}
+                        {rev.tenSanPham && (
+                          <Link
+                            to={`/san-pham/${rev.maSanPham}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              background: '#fff7ed',
+                              padding: '6px 10px',
+                              borderRadius: 10,
+                              marginBottom: 14,
+                              border: '1px dashed #fed7aa',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            {rev.hinhAnhSanPham && (
+                              <img
+                                src={rev.hinhAnhSanPham}
+                                alt={rev.tenSanPham}
+                                style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 6 }}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
+                            <div
+                              style={{
+                                fontSize: '0.8rem',
+                                color: '#9a3412',
+                                fontWeight: 700,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Món: {rev.tenSanPham}
+                            </div>
+                          </Link>
+                        )}
+
+                        {/* Customer Info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                          <Avatar
+                            style={{
+                              backgroundColor: '#ea580c',
+                              color: '#fff',
+                              fontWeight: 800,
+                              fontSize: 13,
+                              flexShrink: 0
+                            }}
+                          >
+                            {(rev.tenKhachHang || 'K')?.[0]?.toUpperCase()}
+                          </Avatar>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {rev.tenKhachHang || 'Khách hàng Snack Shop'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircleOutlined style={{ fontSize: 11 }} /> Đã mua hàng thực tế
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </Col>
-        </Row>
+
+            {/* Slider Dots Indicator */}
+            {reviewMaxIndex > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 18 }}>
+                {Array.from({ length: reviewMaxIndex + 1 }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setReviewSlideIndex(idx)}
+                    style={{
+                      width: reviewSlideIndex === idx ? 22 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: reviewSlideIndex === idx ? '#ea580c' : '#fed7aa',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
     </div>

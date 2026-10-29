@@ -28,6 +28,7 @@ import {
   SNACK_HERO_BANNER,
   getCategoryThumbnail,
 } from '../constants/snackImages';
+import { SNACK_COMBOS } from '../constants/snackCombos';
 import apiClient from '../api/client';
 import ServerConfigModal from '../components/ServerConfigModal';
 
@@ -80,13 +81,13 @@ export default function HomeScreen({ navigation }) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setNetworkError(false);
       const [prodsRes, catsRes, reviewsRes] = await Promise.all([
-        getProducts({ pageSize: 50 }),
-        getCategories().catch(() => []),
+        getProducts({ pageSize: 50 }, forceRefresh),
+        getCategories(forceRefresh).catch(() => []),
         getFeaturedReviews(8).catch(() => []),
       ]);
 
@@ -117,7 +118,7 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    loadData(true);
   };
 
   const handleQuickAdd = async (item) => {
@@ -164,9 +165,28 @@ export default function HomeScreen({ navigation }) {
     return semanticSearchProducts(products, searchQuery, categories).slice(0, 4);
   }, [searchQuery, products, categories]);
 
-  // Top best sellers & flash sales
-  const bestSellers = products.slice(0, 6);
-  const flashSaleItems = products.slice(2, 7);
+  // Top món ngon bán chạy nhất: Sắp xếp chuẩn theo lượt bán (daBan) giảm dần
+  const bestSellers = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    return [...products]
+      .sort((a, b) => {
+        const soldA = Number(a.daBan ?? a.soLuongDaBan ?? a.soLuongBan ?? 0);
+        const soldB = Number(b.daBan ?? b.soLuongDaBan ?? b.soLuongBan ?? 0);
+        if (soldB !== soldA) return soldB - soldA;
+        if (b.laBanChay && !a.laBanChay) return 1;
+        if (!b.laBanChay && a.laBanChay) return -1;
+        return (Number(b.diemTrungBinh) || 0) - (Number(a.diemTrungBinh) || 0);
+      })
+      .slice(0, 6);
+  }, [products]);
+
+  // Flash sales ưu tiên món có giảm giá
+  const flashSaleItems = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    const discounted = products.filter((p) => p.giaSauGiam && p.giaSauGiam < p.giaBan);
+    if (discounted.length >= 4) return discounted.slice(0, 8);
+    return products.slice(0, 6);
+  }, [products]);
 
   return (
     <View style={styles.container}>
@@ -334,8 +354,8 @@ export default function HomeScreen({ navigation }) {
               <Text style={{ fontSize: 18 }}>🎟️</Text>
               <View style={styles.voucherTextCol}>
                 <Text style={styles.voucherTitle}>
-                  Giảm 30K <Text style={styles.voucherSub}>đơn từ 99K • Mã: </Text>
-                  <Text style={styles.voucherCode}>SNACK30</Text>
+                  Giảm 20K <Text style={styles.voucherSub}>đơn 199K • Mã: </Text>
+                  <Text style={styles.voucherCode}>SNACK20</Text>
                 </Text>
               </View>
             </View>
@@ -343,7 +363,7 @@ export default function HomeScreen({ navigation }) {
               style={[styles.saveVoucherBtn, voucherSaved && styles.savedVoucherBtn]}
               onPress={() => {
                 setVoucherSaved(true);
-                Alert.alert('Thành công', 'Đã lưu mã ưu đãi SNACK30 vào ví của bạn!');
+                Alert.alert('Thành công', 'Đã lưu mã ưu đãi SNACK20 vào ví của bạn!');
               }}
               activeOpacity={0.8}
             >
@@ -384,6 +404,32 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.heroCtaText}>Săn Ngay →</Text>
                 </View>
               </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* COMBO SUPER SALE BANNER */}
+          <TouchableOpacity
+            style={styles.comboHeroBanner}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'CombosTab' })}
+          >
+            <View style={styles.comboHeroLeft}>
+              <View style={styles.comboHeroBadge}>
+                <Text style={styles.comboHeroBadgeText}>TIẾT KIỆM ĐẾN 37%</Text>
+              </View>
+              <Text style={styles.comboHeroTitle}>
+                SIÊU HỘI COMBO{'\n'}
+                <Text style={styles.comboHeroTitleAccent}>ĂN VẶT TRỌN GÓI</Text>
+              </Text>
+              <Text style={styles.comboHeroSub} numberOfLines={1}>
+                20 combo HSSV, Văn phòng, Cày phim & Quà VIP
+              </Text>
+              <View style={styles.comboHeroCta}>
+                <Text style={styles.comboHeroCtaText}>Khám phá 20 Combo ›</Text>
+              </View>
+            </View>
+            <View style={styles.comboHeroRight}>
+              <Text style={{ fontSize: 44 }}>🎁</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -519,6 +565,55 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
         </View>
 
+        {/* COMBO HOT TIẾT KIỆM (20 Combos Đặc Sắc) */}
+        <View style={styles.comboHomeSection}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.sectionTitle}>Combo Ăn Vặt Tiết Kiệm 🎉</Text>
+                <View style={styles.comboPillBadge}>
+                  <Text style={styles.comboPillBadgeText}>-37%</Text>
+                </View>
+              </View>
+              <Text style={styles.sectionSub}>Gom món ăn vặt trọn gói • Giá siêu hời</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'CombosTab' })}>
+              <Text style={styles.seeAllText}>Xem tất cả (20) ›</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.comboScroll}
+          >
+            {SNACK_COMBOS.slice(0, 6).map((combo) => (
+              <TouchableOpacity
+                key={combo.id}
+                style={styles.comboHomeCard}
+                activeOpacity={0.88}
+                onPress={() => navigation.navigate('ComboDetail', { comboId: combo.id })}
+              >
+                <View style={styles.comboHomeImgWrap}>
+                  <Image source={{ uri: combo.image }} style={styles.comboHomeImage} resizeMode="cover" />
+                  <View style={[styles.comboHomeBadge, { backgroundColor: combo.badgeColor || '#A53600' }]}>
+                    <Text style={styles.comboHomeBadgeText}>{combo.badge}</Text>
+                  </View>
+                </View>
+                <View style={styles.comboHomeBody}>
+                  <Text style={styles.comboHomeTitle} numberOfLines={1}>{combo.name}</Text>
+                  <Text style={styles.comboHomeCategory} numberOfLines={1}>{combo.categoryLabel}</Text>
+                  <View style={styles.comboHomePriceRow}>
+                    <Text style={styles.comboHomePrice}>{formatVnd(combo.comboPrice)}</Text>
+                    <Text style={styles.comboHomeOldPrice}>{formatVnd(combo.originalPrice)}</Text>
+                  </View>
+                  <Text style={styles.comboHomeSavings}>Tiết kiệm {formatVnd(combo.savedAmount)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* 5. MÓN NGON BÁN CHẠY NHẤT 🔥 (Top tuần này) */}
         <View style={styles.bestSellerSection}>
           <View style={styles.sectionHeader}>
@@ -610,27 +705,6 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               );
             })}
-          </View>
-        </View>
-
-        {/* 6. 3 CAM KẾT CHẤT LƯỢNG (Value Props Bar) */}
-        <View style={styles.valuePropsSection}>
-          <View style={styles.valuePropItem}>
-            <Text style={{ fontSize: 24, marginBottom: 4 }}>⚡</Text>
-            <Text style={styles.valuePropTitle}>Giao Nhanh 2H</Text>
-            <Text style={styles.valuePropSub}>Có đồ ăn liền giòn ngon</Text>
-          </View>
-          <View style={styles.valuePropDivider} />
-          <View style={styles.valuePropItem}>
-            <Text style={{ fontSize: 24, marginBottom: 4 }}>🔄</Text>
-            <Text style={styles.valuePropTitle}>Đổi Trả Miễn Phí</Text>
-            <Text style={styles.valuePropSub}>Nếu bị xì, rách bao bì</Text>
-          </View>
-          <View style={styles.valuePropDivider} />
-          <View style={styles.valuePropItem}>
-            <Text style={{ fontSize: 24, marginBottom: 4 }}>🌟</Text>
-            <Text style={styles.valuePropTitle}>Chuẩn Vị F1</Text>
-            <Text style={styles.valuePropSub}>Nguyên gốc rõ ràng 100%</Text>
           </View>
         </View>
 
@@ -1510,5 +1584,164 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     borderRadius: borderRadius.md,
+  },
+  comboHeroBanner: {
+    marginTop: 12,
+    backgroundColor: '#FFD0BE',
+    borderRadius: borderRadius.xl || 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F3E6DD',
+    shadowColor: '#32190E',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  comboHeroLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  comboHeroBadge: {
+    backgroundColor: '#A53600',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  comboHeroBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  comboHeroTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#211A15',
+    lineHeight: 22,
+  },
+  comboHeroTitleAccent: {
+    color: '#A53600',
+  },
+  comboHeroSub: {
+    fontSize: 11,
+    color: '#5A4138',
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  comboHeroCta: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E3BFB3',
+  },
+  comboHeroCtaText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A53600',
+  },
+  comboHeroRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 6,
+  },
+  comboHomeSection: {
+    marginTop: spacing?.lg || 16,
+    marginBottom: 8,
+  },
+  comboPillBadge: {
+    backgroundColor: '#FFD0BE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  comboPillBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#7A5749',
+  },
+  comboScroll: {
+    paddingHorizontal: spacing?.margin || 16,
+    gap: 12,
+    paddingVertical: 8,
+  },
+  comboHomeCard: {
+    width: 200,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg || 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F9EBE2',
+    shadowColor: '#32190E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  comboHomeImgWrap: {
+    width: '100%',
+    height: 115,
+    backgroundColor: '#EEE0D7',
+    position: 'relative',
+  },
+  comboHomeImage: {
+    width: '100%',
+    height: '100%',
+  },
+  comboHomeBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  comboHomeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  comboHomeBody: {
+    padding: 10,
+  },
+  comboHomeTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#211A15',
+  },
+  comboHomeCategory: {
+    fontSize: 11,
+    color: '#795648',
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  comboHomePriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  comboHomePrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#A53600',
+  },
+  comboHomeOldPrice: {
+    fontSize: 11,
+    color: '#8E7066',
+    textDecorationLine: 'line-through',
+  },
+  comboHomeSavings: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#059669',
+    marginTop: 4,
   },
 });

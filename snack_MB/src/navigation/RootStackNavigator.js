@@ -12,6 +12,8 @@ import LoginScreen from '../screens/LoginScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import AdminUserManagementScreen from '../screens/AdminUserManagementScreen';
 import ManagerDashboardScreen from '../screens/ManagerDashboardScreen';
+import CombosScreen from '../screens/CombosScreen';
+import ComboDetailScreen from '../screens/ComboDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +28,8 @@ export default function RootStackNavigator() {
       <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Products" component={ProductsScreen} />
+      <Stack.Screen name="Combos" component={CombosScreen} />
+      <Stack.Screen name="ComboDetail" component={ComboDetailScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="OrderTracking" component={OrderTrackingScreen} />

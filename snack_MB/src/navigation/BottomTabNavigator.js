@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import ProductsScreen from '../screens/ProductsScreen';
+import CombosScreen from '../screens/CombosScreen';
 import CartScreen from '../screens/CartScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../constants/theme';
@@ -60,6 +61,17 @@ export default function BottomTabNavigator() {
           tabBarLabel: 'Sản phẩm',
           tabBarIcon: ({ color, focused }) => (
             <Text style={{ fontSize: focused ? 22 : 18 }}>🍱</Text>
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="CombosTab"
+        component={CombosScreen}
+        options={{
+          tabBarLabel: 'Combo',
+          tabBarIcon: ({ color, focused }) => (
+            <Text style={{ fontSize: focused ? 22 : 18 }}>🎁</Text>
           ),
         }}
       />

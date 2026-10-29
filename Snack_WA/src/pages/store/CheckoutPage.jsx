@@ -26,10 +26,11 @@ import {
   TagOutlined,
   CloseCircleOutlined
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCartQuery } from '../../features/cart/hooks';
 import { useCreateOrder, useCalculateTempOrder } from '../../features/orders/hooks';
 import { useAuthStore } from '../../shared/auth/authStore';
+import { useComboCartStore } from '../../features/cart/comboCartStore';
 import { formatVnd } from '../../shared/utils/formatters';
 
 const { Title, Text, Paragraph } = Typography;
@@ -37,13 +38,15 @@ const { Title, Text, Paragraph } = Typography;
 export default function CheckoutPage() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
+  const { appliedComboVouchers, clearComboVouchers, getPrimaryComboVoucherCode } = useComboCartStore();
 
   const { data: cartItems = [], isLoading: isLoadingCart } = useCartQuery();
   const { mutateAsync: createOrder, isPending: isSubmitting } = useCreateOrder();
   const { mutateAsync: calculateTempOrder, isPending: isCalculating } = useCalculateTempOrder();
 
-  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherCode, setVoucherCode] = useState(() => location.state?.comboVoucherCode || getPrimaryComboVoucherCode() || '');
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [tempCalculation, setTempCalculation] = useState(null);
   const [calcError, setCalcError] = useState('');
@@ -94,7 +97,13 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (cartItems.length > 0) {
-      runCalculation(appliedVoucher);
+      const codeToUse = appliedVoucher || location.state?.comboVoucherCode || getPrimaryComboVoucherCode();
+      if (codeToUse) {
+        setVoucherCode(codeToUse);
+        runCalculation(codeToUse);
+      } else {
+        runCalculation(null);
+      }
     }
   }, [cartItems]);
 
@@ -137,6 +146,7 @@ export default function CheckoutPage() {
       };
 
       const result = await createOrder(payload);
+      if (clearComboVouchers) clearComboVouchers();
       message.success(`Đặt hàng thành công! Mã đơn hàng: ${result.maCode || ''}`);
       navigate('/don-hang');
     } catch (err) {
@@ -418,49 +428,72 @@ export default function CheckoutPage() {
                   paddingRight: 4
                 }}
               >
-                {cartItems.map((item) => (
-                  <div 
-                    key={item.maGioHang} 
-                    style={{ 
-                      display: 'flex', 
-                      gap: 12, 
-                      alignItems: 'center', 
-                      paddingBottom: 10, 
-                      borderBottom: '1px solid #f5f5f4' 
-                    }}
-                  >
+                {cartItems.map((item) => {
+                  const comboVoucher = (appliedComboVouchers || []).find(
+                    (v) => v.itemIds && v.itemIds.includes(item.maSanPham)
+                  );
+                  const discountPercent = comboVoucher
+                    ? (comboVoucher.discountPercent || Math.round((comboVoucher.savedAmount / (comboVoucher.originalPrice || 1)) * 100))
+                    : null;
+                  const effectiveUnitPrice = discountPercent 
+                    ? Math.round(item.giaBan * (1 - (discountPercent / 100))) 
+                    : item.giaBan;
+                  const itemTotal = effectiveUnitPrice * item.soLuong;
+
+                  return (
                     <div 
+                      key={item.maGioHang} 
                       style={{ 
-                        width: 48, 
-                        height: 64, 
-                        flexShrink: 0, 
-                        borderRadius: 8, 
-                        overflow: 'hidden', 
-                        background: '#fff7ed',
-                        border: '1px solid #fed7aa'
+                        display: 'flex', 
+                        gap: 12, 
+                        alignItems: 'center', 
+                        paddingBottom: 10, 
+                        borderBottom: '1px solid #f5f5f4' 
                       }}
                     >
-                      <Image
-                        src={item.hinhAnhDaiDien || '/logo.png'}
-                        fallback="/logo.png"
-                        alt={item.tenSanPham}
-                        preview={false}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#292524', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.tenSanPham}
+                      <div 
+                        style={{ 
+                          width: 48, 
+                          height: 64, 
+                          flexShrink: 0, 
+                          borderRadius: 8, 
+                          overflow: 'hidden', 
+                          background: '#fff7ed',
+                          border: '1px solid #fed7aa'
+                        }}
+                      >
+                        <Image
+                          src={item.hinhAnhDaiDien || '/logo.png'}
+                          fallback="/logo.png"
+                          alt={item.tenSanPham}
+                          preview={false}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#78716c' }}>
-                        {formatVnd(item.giaBan)} x {item.soLuong}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#292524', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.tenSanPham}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#78716c', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{formatVnd(effectiveUnitPrice)} x {item.soLuong}</span>
+                          {discountPercent && (
+                            <span style={{ textDecoration: 'line-through', color: '#a8a29e', fontSize: '0.75rem' }}>
+                              {formatVnd(item.giaBan)}
+                            </span>
+                          )}
+                        </div>
+                        {comboVoucher && (
+                          <div style={{ fontSize: '0.72rem', color: '#ea580c', fontWeight: 600 }}>
+                            🎁 Theo {comboVoucher.comboName}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#dc2626' }}>
+                        {formatVnd(itemTotal)}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#dc2626' }}>
-                      {formatVnd(item.thanhTien || item.giaBan * item.soLuong)}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Price Calculations */}
@@ -477,7 +510,9 @@ export default function CheckoutPage() {
 
                 {discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                    <Text type="secondary" style={{ color: '#16a34a' }}>Giảm giá voucher:</Text>
+                    <Text type="secondary" style={{ color: '#16a34a' }}>
+                      {appliedVoucher?.startsWith('COMBO_') ? 'Ưu đãi Combo:' : 'Giảm giá voucher:'}
+                    </Text>
                     <span style={{ fontWeight: 700, color: '#16a34a' }}>
                       -{formatVnd(discount)}
                     </span>

@@ -85,6 +85,11 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
   const [updatingId, setUpdatingId] = useState(null);
   const [selectedItemDetail, setSelectedItemDetail] = useState(null);
 
+  // Order Detail Pop-up Modal state
+  const [orderDetailModalVisible, setOrderDetailModalVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loadingOrderDetail, setLoadingOrderDetail] = useState(false);
+
   // Accordion state for category tree (loaiCons)
   const [expandedCatIds, setExpandedCatIds] = useState(new Set());
 
@@ -213,6 +218,26 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
     });
   };
 
+  // Mở popup chi tiết đơn hàng
+  const handleOpenOrderDetail = async (order) => {
+    setSelectedOrder(order);
+    setOrderDetailModalVisible(true);
+    setLoadingOrderDetail(true);
+    try {
+      const orderId = order.maDonHang || order.id;
+      if (orderId) {
+        const detail = await getOrderDetail(orderId);
+        if (detail) {
+          setSelectedOrder(detail);
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi tải chi tiết đơn hàng:', err);
+    } finally {
+      setLoadingOrderDetail(false);
+    }
+  };
+
   // Cập nhật trạng thái đơn hàng trực tiếp
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -226,6 +251,11 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                 ? { ...item, trangThaiDonHang: newStatus }
                 : item
             )
+          : prev
+      );
+      setSelectedOrder((prev) =>
+        prev && (prev.maDonHang === orderId || prev.id === orderId)
+          ? { ...prev, trangThaiDonHang: newStatus }
           : prev
       );
       if (onOrderUpdated) onOrderUpdated();
@@ -244,6 +274,11 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
       await generateInvoice(orderId);
       Alert.alert('Thành công 🎉', 'Đã xuất hóa đơn bán lẻ thành công cho đơn hàng!');
       loadModuleData();
+      if (selectedOrder && (selectedOrder.maDonHang === orderId || selectedOrder.id === orderId)) {
+        getOrderDetail(orderId).then((fresh) => {
+          if (fresh) setSelectedOrder(fresh);
+        }).catch(() => {});
+      }
       if (onOrderUpdated) onOrderUpdated();
     } catch (err) {
       const msg = err.response?.data?.message || 'Không thể xuất hóa đơn cho đơn hàng này.';
@@ -251,6 +286,48 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  // Hủy đơn hàng từ popup hoặc danh sách
+  const handleCancelOrder = async (orderId) => {
+    Alert.alert(
+      'Xác nhận hủy đơn ⚠️',
+      'Bạn có chắc chắn muốn hủy đơn hàng này không? Hệ thống sẽ tự động hoàn trả tồn kho sản phẩm.',
+      [
+        { text: 'Quay lại', style: 'cancel' },
+        {
+          text: 'Hủy đơn',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setUpdatingId(orderId);
+              await cancelOrder(orderId, 'Hủy theo yêu cầu quản trị viên');
+              Alert.alert('Đã Hủy Đơn', 'Đơn hàng đã được hủy thành công!');
+              setDataList((prev) =>
+                Array.isArray(prev)
+                  ? prev.map((item) =>
+                      item.maDonHang === orderId || item.id === orderId
+                        ? { ...item, trangThaiDonHang: 'da_huy' }
+                        : item
+                    )
+                  : prev
+              );
+              setSelectedOrder((prev) =>
+                prev && (prev.maDonHang === orderId || prev.id === orderId)
+                  ? { ...prev, trangThaiDonHang: 'da_huy' }
+                  : prev
+              );
+              if (onOrderUpdated) onOrderUpdated();
+            } catch (err) {
+              const msg = err.response?.data?.message || 'Không thể hủy đơn hàng này.';
+              Alert.alert('Lỗi', msg);
+            } finally {
+              setUpdatingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Bật / Tắt trạng thái bán của sản phẩm
@@ -372,13 +449,37 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
         diaChi: '',
       });
     } else if (targetModule === 'khuyen_mai') {
+      if (cachedProducts.length === 0) {
+        getProducts({ page: 1, pageSize: 100 }).then((res) => {
+          const items = res?.items || (Array.isArray(res) ? res : []);
+          setCachedProducts(items);
+        }).catch(() => {});
+      }
+
       setFormValues({
         tenKm: '',
-        maCode: 'SNACK20',
+        loaiKhuyenMai: 'voucher',
+        durationDays: '30',
+
+        // Voucher
+        maCode: '',
         loaiGiamGia: 'phan_tram',
-        giaTriGiam: '20',
-        giaTriDonToiThieu: '100000',
-        moTa: '',
+        giaTriGiam: '15',
+        giaTriDonToiThieu: '50000',
+        giamToiDa: '30000',
+        gioiHanSuDung: '100',
+        gioiHanMoiKhach: '1',
+
+        // Hóa đơn
+        hdLoaiGiamGia: 'phan_tram',
+        hdGiaTriGiam: '10',
+        hdGiaTriDonToiThieu: '100000',
+        hdGiamToiDa: '50000',
+
+        // Sản phẩm
+        spMaSanPham: extra.maSanPham || cachedProducts[0]?.maSanPham || '',
+        spLoaiGiamGia: 'phan_tram',
+        spGiaTriGiam: '15',
       });
     } else if (targetModule === 'nhan_vien') {
       setFormValues({
@@ -435,13 +536,41 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
         diaChi: item.diaChi || '',
       });
     } else if (targetModule === 'khuyen_mai') {
+      const loai = item.loaiKhuyenMai || (item.maCode || item.maVoucher ? 'voucher' : 'hoa_don');
+      const vc = item.khuyenMaiTheoVoucher;
+      const hd = item.khuyenMaiTheoHoaDon;
+      const sp = item.khuyenMaiTheoSanPhams?.[0];
+
+      let days = 30;
+      if (item.ngayBatDau && item.ngayKetThuc) {
+        const diffMs = new Date(item.ngayKetThuc).getTime() - new Date(item.ngayBatDau).getTime();
+        days = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+      }
+
       setFormValues({
         tenKm: item.tenKm || item.tenKhuyenMai || '',
-        maCode: item.maCode || item.maVoucher || '',
-        loaiGiamGia: item.loaiGiamGia === 'so_tien' ? 'so_tien' : 'phan_tram',
-        giaTriGiam: String(item.giaTriGiam || 20),
-        giaTriDonToiThieu: String(item.giaTriDonToiThieu || item.donToiThieu || 0),
-        moTa: item.moTa || '',
+        loaiKhuyenMai: loai,
+        durationDays: String(days),
+
+        // Voucher
+        maCode: vc?.maCode || item.maCode || item.maVoucher || '',
+        loaiGiamGia: vc?.loaiGiamGia || item.loaiGiamGia || 'phan_tram',
+        giaTriGiam: String(vc?.giaTriGiam ?? item.giaTriGiam ?? 15),
+        giaTriDonToiThieu: String(vc?.giaTriDonToiThieu ?? item.giaTriDonToiThieu ?? item.donToiThieu ?? 0),
+        giamToiDa: vc?.giamToiDa ? String(vc.giamToiDa) : '',
+        gioiHanSuDung: vc?.gioiHanSuDung ? String(vc.gioiHanSuDung) : '',
+        gioiHanMoiKhach: vc?.gioiHanMoiKhach ? String(vc.gioiHanMoiKhach) : '1',
+
+        // Hóa đơn
+        hdLoaiGiamGia: hd?.loaiGiamGia || 'phan_tram',
+        hdGiaTriGiam: String(hd?.giaTriGiam ?? 10),
+        hdGiaTriDonToiThieu: String(hd?.giaTriDonToiThieu ?? 100000),
+        hdGiamToiDa: hd?.giamToiDa ? String(hd.giamToiDa) : '',
+
+        // Sản phẩm
+        spMaSanPham: sp?.maSanPham || cachedProducts[0]?.maSanPham || '',
+        spLoaiGiamGia: sp?.loaiGiamGia || 'phan_tram',
+        spGiaTriGiam: String(sp?.giaTriGiam ?? 15),
       });
     } else if (targetModule === 'nhan_vien') {
       setFormValues({
@@ -534,33 +663,85 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
           Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên chương trình khuyến mãi.');
           return;
         }
-        const now = new Date();
-        const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 ngày
 
+        const now = new Date();
+        const durationDays = Math.max(1, parseInt(formValues.durationDays, 10) || 30);
+        const end = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        const loaiKm = formValues.loaiKhuyenMai || 'voucher';
         const payload = {
           tenKm: formValues.tenKm.trim(),
           ngayBatDau: now.toISOString(),
           ngayKetThuc: end.toISOString(),
-          loaiKhuyenMai: formValues.maCode ? 'voucher' : 'hoa_don',
+          loaiKhuyenMai: loaiKm,
         };
 
-        if (formValues.maCode) {
+        if (loaiKm === 'voucher') {
+          if (!formValues.maCode?.trim()) {
+            Alert.alert('Thiếu thông tin', 'Vui lòng nhập mã code Voucher (VD: BANHMI10).');
+            return;
+          }
+          const giaTriGiam = Number(formValues.giaTriGiam) || 0;
+          if (giaTriGiam <= 0) {
+            Alert.alert('Lỗi', 'Mức giảm giá phải lớn hơn 0.');
+            return;
+          }
+          if (formValues.loaiGiamGia === 'phan_tram' && giaTriGiam > 100) {
+            Alert.alert('Lỗi', 'Mức giảm phần trăm không được vượt quá 100%.');
+            return;
+          }
+
           payload.khuyenMaiTheoVoucher = {
             tenKm: formValues.tenKm.trim(),
             maCode: formValues.maCode.trim().toUpperCase(),
             loaiGiamGia: formValues.loaiGiamGia || 'phan_tram',
-            giaTriGiam: Number(formValues.giaTriGiam) || 0,
+            giaTriGiam: giaTriGiam,
             giaTriDonToiThieu: Number(formValues.giaTriDonToiThieu) || 0,
-            giamToiDa: 50000,
+            giamToiDa: formValues.giamToiDa ? Number(formValues.giamToiDa) : null,
+            gioiHanSuDung: formValues.gioiHanSuDung ? parseInt(formValues.gioiHanSuDung, 10) : null,
+            gioiHanMoiKhach: formValues.gioiHanMoiKhach ? parseInt(formValues.gioiHanMoiKhach, 10) : null,
           };
-        } else {
+        } else if (loaiKm === 'hoa_don') {
+          const giaTriGiam = Number(formValues.hdGiaTriGiam) || 0;
+          if (giaTriGiam <= 0) {
+            Alert.alert('Lỗi', 'Mức giảm giá phải lớn hơn 0.');
+            return;
+          }
+          if (formValues.hdLoaiGiamGia === 'phan_tram' && giaTriGiam > 100) {
+            Alert.alert('Lỗi', 'Mức giảm phần trăm không được vượt quá 100%.');
+            return;
+          }
+
           payload.khuyenMaiTheoHoaDon = {
             tenKm: formValues.tenKm.trim(),
-            loaiGiamGia: formValues.loaiGiamGia || 'phan_tram',
-            giaTriGiam: Number(formValues.giaTriGiam) || 0,
-            giaTriDonToiThieu: Number(formValues.giaTriDonToiThieu) || 0,
-            giamToiDa: 50000,
+            loaiGiamGia: formValues.hdLoaiGiamGia || 'phan_tram',
+            giaTriGiam: giaTriGiam,
+            giaTriDonToiThieu: Number(formValues.hdGiaTriDonToiThieu) || 0,
+            giamToiDa: formValues.hdGiamToiDa ? Number(formValues.hdGiamToiDa) : null,
           };
+        } else if (loaiKm === 'san_pham') {
+          if (!formValues.spMaSanPham) {
+            Alert.alert('Thiếu thông tin', 'Vui lòng chọn món ăn vặt cần áp dụng.');
+            return;
+          }
+          const giaTriGiam = Number(formValues.spGiaTriGiam) || 0;
+          if (giaTriGiam <= 0) {
+            Alert.alert('Lỗi', 'Mức giảm giá phải lớn hơn 0.');
+            return;
+          }
+          if (formValues.spLoaiGiamGia === 'phan_tram' && giaTriGiam > 100) {
+            Alert.alert('Lỗi', 'Mức giảm phần trăm không được vượt quá 100%.');
+            return;
+          }
+
+          payload.khuyenMaiTheoSanPhams = [
+            {
+              maSanPham: formValues.spMaSanPham,
+              tenKm: formValues.tenKm.trim(),
+              loaiGiamGia: formValues.spLoaiGiamGia || 'phan_tram',
+              giaTriGiam: giaTriGiam,
+            }
+          ];
         }
 
         if (crudAction === 'edit' && editingItem) {
@@ -703,21 +884,16 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
               <Text style={styles.backButtonText}>✕</Text>
             </TouchableOpacity>
 
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 18 }}>{currentModule.icon}</Text>
-                <Text style={styles.moduleHeaderTitle} numberOfLines={1}>
-                  {currentModule.title}
-                </Text>
-              </View>
-              <Text style={styles.moduleHeaderSubtitle}>
-                Dữ liệu đồng bộ trực tiếp • Quản lý SnackShop
+            <View style={styles.headerTitleWrap}>
+              <Text style={{ fontSize: 18 }}>{currentModule.icon}</Text>
+              <Text style={styles.moduleHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
+                {currentModule.title}
               </Text>
             </View>
 
             {/* Header Action: Add button & Refresh */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {['san_pham', 'loai_sp', 'nha_cung_cap', 'khuyen_mai', 'nhan_vien', 'nhap_hang'].includes(moduleKey) && (
+            <View style={styles.headerActionGroup}>
+              {['san_pham', 'loai_sp', 'nha_cung_cap', 'nhan_vien', 'nhap_hang'].includes(moduleKey) && (
                 <TouchableOpacity
                   style={styles.headerAddBtn}
                   onPress={() => handleOpenCreate(moduleKey)}
@@ -728,7 +904,7 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
               )}
 
               <TouchableOpacity style={styles.refreshIconBtn} onPress={loadModuleData} activeOpacity={0.7}>
-                <Text style={{ fontSize: 16 }}>🔄</Text>
+                <Text style={{ fontSize: 15 }}>🔄</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -775,9 +951,14 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                   const isUpdating = updatingId === (order.maDonHang || order.id);
 
                   return (
-                    <View key={order.maDonHang || idx} style={styles.cardItem}>
+                    <TouchableOpacity
+                      key={order.maDonHang || idx}
+                      style={styles.cardItem}
+                      activeOpacity={0.88}
+                      onPress={() => handleOpenOrderDetail(order)}
+                    >
                       <View style={styles.cardItemHeader}>
-                        <View>
+                        <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={styles.itemCode}>📦 #{order.maCode || order.maDonHang?.slice(0, 8)}</Text>
                           <Text style={styles.itemCustomer}>
                             {order.tenNguoiNhan || 'Khách hàng'} • {order.sdtNguoiNhan || 'Không có SĐT'}
@@ -819,7 +1000,10 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                               style={[styles.actionBtn, { backgroundColor: '#16a34a' }]}
                               activeOpacity={0.8}
                               disabled={isUpdating}
-                              onPress={() => handleUpdateOrderStatus(order.maDonHang || order.id, 'da_xac_nhan')}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                handleUpdateOrderStatus(order.maDonHang || order.id, 'da_xac_nhan');
+                              }}
                             >
                               {isUpdating ? (
                                 <ActivityIndicator size="small" color="#fff" />
@@ -834,7 +1018,10 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                               style={[styles.actionBtn, { backgroundColor: '#2563eb' }]}
                               activeOpacity={0.8}
                               disabled={isUpdating}
-                              onPress={() => handleUpdateOrderStatus(order.maDonHang || order.id, 'dang_giao')}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                handleUpdateOrderStatus(order.maDonHang || order.id, 'dang_giao');
+                              }}
                             >
                               {isUpdating ? (
                                 <ActivityIndicator size="small" color="#fff" />
@@ -849,7 +1036,10 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                               style={[styles.actionBtn, { backgroundColor: '#059669' }]}
                               activeOpacity={0.8}
                               disabled={isUpdating}
-                              onPress={() => handleUpdateOrderStatus(order.maDonHang || order.id, 'da_giao')}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                handleUpdateOrderStatus(order.maDonHang || order.id, 'da_giao');
+                              }}
                             >
                               {isUpdating ? (
                                 <ActivityIndicator size="small" color="#fff" />
@@ -865,7 +1055,10 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                               style={[styles.actionBtn, { backgroundColor: '#0284c7' }]}
                               activeOpacity={0.8}
                               disabled={isUpdating}
-                              onPress={() => handleGenerateInvoice(order.maDonHang || order.id)}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                handleGenerateInvoice(order.maDonHang || order.id);
+                              }}
                             >
                               <Text style={styles.actionBtnText}>🧾 Xuất HĐ</Text>
                             </TouchableOpacity>
@@ -876,14 +1069,17 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                               style={[styles.actionBtnOutline, { borderColor: '#ef4444' }]}
                               activeOpacity={0.8}
                               disabled={isUpdating}
-                              onPress={() => handleUpdateOrderStatus(order.maDonHang || order.id, 'da_huy')}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                handleCancelOrder(order.maDonHang || order.id);
+                              }}
                             >
                               <Text style={[styles.actionBtnOutlineText, { color: '#ef4444' }]}>Hủy đơn</Text>
                             </TouchableOpacity>
                           )}
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -899,7 +1095,16 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                 </View>
 
                 {filteredList?.map((invoice, idx) => (
-                  <View key={invoice.soHoaDon || idx} style={styles.cardItem}>
+                  <TouchableOpacity 
+                    key={invoice.soHoaDon || idx} 
+                    style={styles.cardItem}
+                    activeOpacity={0.88}
+                    onPress={() => {
+                      if (invoice.maDonHang) {
+                        handleOpenOrderDetail({ maDonHang: invoice.maDonHang, maCode: invoice.maCodeDonHang });
+                      }
+                    }}
+                  >
                     <View style={styles.cardItemHeader}>
                       <View>
                         <Text style={[styles.itemCode, { color: '#0284c7' }]}>🧾 {invoice.soHoaDon}</Text>
@@ -926,7 +1131,7 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                       <Text style={styles.footerLabel}>Tổng tiền hóa đơn:</Text>
                       <Text style={[styles.footerAmount, { color: '#0284c7' }]}>{formatVnd(invoice.tongTien)}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -1187,61 +1392,125 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                     onPress={() => handleOpenCreate('khuyen_mai')}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.addBtnSmallText}>+ Thêm mã ưu đãi</Text>
+                    <Text style={styles.addBtnSmallText}>+ Thêm</Text>
                   </TouchableOpacity>
                 </View>
 
-                {filteredList?.map((promo, idx) => (
-                  <View key={promo.id || promo.maCtkm || idx} style={styles.cardItem}>
-                    <View style={styles.cardItemHeader}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.productItemTitle}>🎁 {promo.tenKm || promo.tenKhuyenMai}</Text>
-                        {(promo.maCode || promo.maVoucher) && (
-                          <View style={styles.voucherCodeBox}>
-                            <Text style={styles.voucherCodeText}>MÃ: {promo.maCode || promo.maVoucher}</Text>
+                {filteredList?.map((promo, idx) => {
+                  const loai = promo.loaiKhuyenMai || (promo.maCode || promo.maVoucher ? 'voucher' : 'hoa_don');
+                  const vc = promo.khuyenMaiTheoVoucher;
+                  const hd = promo.khuyenMaiTheoHoaDon;
+                  const spList = promo.khuyenMaiTheoSanPhams || [];
+
+                  return (
+                    <View key={promo.id || promo.maCtkm || idx} style={styles.cardItem}>
+                      <View style={styles.cardItemHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.productItemTitle}>🎁 {promo.tenKm || promo.tenKhuyenMai}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                            {loai === 'voucher' && (vc?.maCode || promo.maCode || promo.maVoucher) && (
+                              <View style={styles.voucherCodeBox}>
+                                <Text style={styles.voucherCodeText}>MÃ: {vc?.maCode || promo.maCode || promo.maVoucher}</Text>
+                              </View>
+                            )}
+                            <View style={[styles.badgePill, {
+                              backgroundColor: loai === 'voucher' ? '#fff7ed' : loai === 'hoa_don' ? '#f0f9ff' : '#faf5ff'
+                            }]}>
+                              <Text style={[styles.badgePillText, {
+                                color: loai === 'voucher' ? '#ea580c' : loai === 'hoa_don' ? '#0284c7' : '#7c3aed'
+                              }]}>
+                                {loai === 'voucher' ? '🎟️ Voucher' : loai === 'hoa_don' ? '🧾 Hóa Đơn' : '🍟 Sản Phẩm'}
+                              </Text>
+                            </View>
                           </View>
+                        </View>
+                        <View style={[styles.badgePill, { backgroundColor: '#ede9fe' }]}>
+                          <Text style={[styles.badgePillText, { color: '#6d28d9' }]}>
+                            {promo.trangThai === 'dang_dien_ra' ? 'Đang áp dụng' : promo.trangThai === 'sap_dien_ra' ? 'Sắp diễn ra' : promo.trangThai === 'da_ket_thuc' ? 'Đã kết thúc' : (promo.trangThai || 'Đang áp dụng')}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ marginTop: 8 }}>
+                        {loai === 'voucher' && (
+                          <>
+                            <Text style={styles.infoLine}>
+                              💵 <Text style={{ fontWeight: '700' }}>Ưu đãi:</Text>{' '}
+                              {vc?.loaiGiamGia === 'so_tien' || promo.loaiGiamGia === 'so_tien'
+                                ? `Giảm ${formatVnd(vc?.giaTriGiam || promo.giaTriGiam)}`
+                                : `Giảm ${vc?.giaTriGiam || promo.giaTriGiam || 15}%`}
+                              {(vc?.giamToiDa || promo.giamToiDa) ? ` (tối đa ${formatVnd(vc?.giamToiDa || promo.giamToiDa)})` : ''}
+                            </Text>
+                            <Text style={styles.infoLine}>
+                              🛒 <Text style={{ fontWeight: '700' }}>Đơn tối thiểu:</Text>{' '}
+                              {formatVnd(vc?.giaTriDonToiThieu || promo.giaTriDonToiThieu || promo.donToiThieu || 0)}
+                              {vc?.gioiHanSuDung ? ` • Lượt: ${vc?.soLuotDaDung || 0}/${vc.gioiHanSuDung}` : ' • Lượt: Không giới hạn'}
+                            </Text>
+                          </>
+                        )}
+
+                        {loai === 'hoa_don' && (
+                          <>
+                            <Text style={styles.infoLine}>
+                              💵 <Text style={{ fontWeight: '700' }}>Ưu đãi tự động:</Text>{' '}
+                              {hd?.loaiGiamGia === 'so_tien'
+                                ? `Giảm ${formatVnd(hd?.giaTriGiam)}`
+                                : `Giảm ${hd?.giaTriGiam || 10}%`}
+                              {hd?.giamToiDa ? ` (tối đa ${formatVnd(hd.giamToiDa)})` : ''}
+                            </Text>
+                            <Text style={styles.infoLine}>
+                              🛒 <Text style={{ fontWeight: '700' }}>Áp dụng đơn từ:</Text>{' '}
+                              {formatVnd(hd?.giaTriDonToiThieu || 100000)}
+                            </Text>
+                          </>
+                        )}
+
+                        {loai === 'san_pham' && (
+                          <>
+                            <Text style={styles.infoLine}>
+                              🍟 <Text style={{ fontWeight: '700' }}>Ưu đãi món ăn:</Text>{' '}
+                              Áp dụng trực tiếp cho {spList.length > 0 ? `${spList.length} món ăn vặt` : 'các món đã chọn'}
+                            </Text>
+                            {spList[0] && (
+                              <Text style={styles.infoLine}>
+                                🏷️ <Text style={{ fontWeight: '700' }}>Mức giảm:</Text>{' '}
+                                {spList[0].loaiGiamGia === 'so_tien'
+                                  ? `Giảm ${formatVnd(spList[0].giaTriGiam)}/món`
+                                  : `Giảm ${spList[0].giaTriGiam}%/món`}
+                              </Text>
+                            )}
+                          </>
+                        )}
+
+                        {(promo.ngayBatDau || promo.ngayKetThuc) && (
+                          <Text style={[styles.infoLine, { color: '#64748b', fontSize: 11, marginTop: 3 }]}>
+                            ⏰ <Text style={{ fontWeight: '600' }}>Hiệu lực:</Text>{' '}
+                            {promo.ngayKetThuc ? `Đến ${new Date(promo.ngayKetThuc).toLocaleDateString('vi-VN')}` : 'Dài hạn'}
+                          </Text>
                         )}
                       </View>
-                      <View style={[styles.badgePill, { backgroundColor: '#ede9fe' }]}>
-                        <Text style={[styles.badgePillText, { color: '#6d28d9' }]}>
-                          {promo.trangThai || 'Đang áp dụng'}
-                        </Text>
+
+                      {/* Action Bar for Promotion */}
+                      <View style={styles.itemActionFooter}>
+                        <TouchableOpacity
+                          style={[styles.actionBtnSmall, { backgroundColor: '#e0f2fe' }]}
+                          onPress={() => handleOpenEdit('khuyen_mai', promo)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.actionBtnSmallText, { color: '#0369a1' }]}>✏️ Sửa</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtnSmall, { backgroundColor: '#fee2e2' }]}
+                          onPress={() => handleDeleteItem('khuyen_mai', promo)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.actionBtnSmallText, { color: '#b91c1c' }]}>🗑️ Xóa</Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
-
-                    <View style={{ marginTop: 8 }}>
-                      <Text style={styles.infoLine}>
-                        💵 <Text style={{ fontWeight: '700' }}>Mức ưu đãi:</Text>{' '}
-                        {promo.loaiGiamGia === 'so_tien'
-                          ? `Giảm ${formatVnd(promo.giaTriGiam)}`
-                          : `Giảm ${promo.giaTriGiam || 20}%`}
-                      </Text>
-                      <Text style={styles.infoLine}>
-                        🛒 <Text style={{ fontWeight: '700' }}>Đơn tối thiểu:</Text>{' '}
-                        {formatVnd(promo.giaTriDonToiThieu || promo.donToiThieu)}
-                      </Text>
-                    </View>
-
-                    {/* Action Bar for Promotion */}
-                    <View style={styles.itemActionFooter}>
-                      <TouchableOpacity
-                        style={[styles.actionBtnSmall, { backgroundColor: '#e0f2fe' }]}
-                        onPress={() => handleOpenEdit('khuyen_mai', promo)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.actionBtnSmallText, { color: '#0369a1' }]}>✏️ Sửa</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.actionBtnSmall, { backgroundColor: '#fee2e2' }]}
-                        onPress={() => handleDeleteItem('khuyen_mai', promo)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.actionBtnSmallText, { color: '#b91c1c' }]}>🗑️ Xóa</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             )}
 
@@ -1822,52 +2091,381 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
                   </View>
                 )}
 
-                {/* 4. FORM KHUYẾN MÃI & VOUCHER */}
+                {/* 4. FORM KHUYẾN MÃI & VOUCHER (ĐẦY ĐỦ NHƯ WEB-APP) */}
                 {crudModule === 'khuyen_mai' && (
                   <View>
                     <Text style={styles.formFieldLabel}>Tên chương trình ưu đãi (*):</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="VD: Siêu Hội Ăn Vặt Giảm 20%"
+                      placeholder="VD: Siêu Hội Ăn Vặt, Chào Bạn Mới, Tri Ân..."
                       placeholderTextColor="#9ca3af"
                       value={formValues.tenKm}
                       onChangeText={(t) => setFormValues((v) => ({ ...v, tenKm: t }))}
                     />
 
-                    <Text style={styles.formFieldLabel}>Mã Voucher (Để trống nếu giảm trực tiếp):</Text>
-                    <TextInput
-                      style={[styles.formInput, { textTransform: 'uppercase', fontWeight: '700' }]}
-                      placeholder="VD: SNACK20, FREESHIP..."
-                      placeholderTextColor="#9ca3af"
-                      autoCapitalize="characters"
-                      value={formValues.maCode}
-                      onChangeText={(t) => setFormValues((v) => ({ ...v, maCode: t }))}
-                    />
+                    {/* Chọn hình thức khuyến mãi */}
+                    <Text style={styles.formFieldLabel}>Hình thức áp dụng khuyến mãi (*):</Text>
+                    <View style={styles.promoTypeRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.promoTypeBtn,
+                          formValues.loaiKhuyenMai === 'voucher' && styles.promoTypeBtnActive,
+                        ]}
+                        onPress={() => setFormValues((v) => ({ ...v, loaiKhuyenMai: 'voucher' }))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.promoTypeIcon}>🎟️</Text>
+                        <Text style={[styles.promoTypeTitle, formValues.loaiKhuyenMai === 'voucher' && styles.promoTypeTitleActive]}>
+                          Voucher
+                        </Text>
+                        <Text style={styles.promoTypeSub}>Khách tự nhập</Text>
+                      </TouchableOpacity>
 
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.formFieldLabel}>Mức giảm (*):</Text>
-                        <TextInput
-                          style={styles.formInput}
-                          placeholder="20"
-                          placeholderTextColor="#9ca3af"
-                          keyboardType="numeric"
-                          value={formValues.giaTriGiam}
-                          onChangeText={(t) => setFormValues((v) => ({ ...v, giaTriGiam: t }))}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.formFieldLabel}>Đơn tối thiểu (VNĐ):</Text>
-                        <TextInput
-                          style={styles.formInput}
-                          placeholder="100000"
-                          placeholderTextColor="#9ca3af"
-                          keyboardType="numeric"
-                          value={formValues.giaTriDonToiThieu}
-                          onChangeText={(t) => setFormValues((v) => ({ ...v, giaTriDonToiThieu: t }))}
-                        />
-                      </View>
+                      <TouchableOpacity
+                        style={[
+                          styles.promoTypeBtn,
+                          formValues.loaiKhuyenMai === 'hoa_don' && styles.promoTypeBtnActive,
+                        ]}
+                        onPress={() => setFormValues((v) => ({ ...v, loaiKhuyenMai: 'hoa_don' }))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.promoTypeIcon}>🧾</Text>
+                        <Text style={[styles.promoTypeTitle, formValues.loaiKhuyenMai === 'hoa_don' && styles.promoTypeTitleActive]}>
+                          Hóa Đơn
+                        </Text>
+                        <Text style={styles.promoTypeSub}>Tự động giảm</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.promoTypeBtn,
+                          formValues.loaiKhuyenMai === 'san_pham' && styles.promoTypeBtnActive,
+                        ]}
+                        onPress={() => setFormValues((v) => ({ ...v, loaiKhuyenMai: 'san_pham' }))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.promoTypeIcon}>🍟</Text>
+                        <Text style={[styles.promoTypeTitle, formValues.loaiKhuyenMai === 'san_pham' && styles.promoTypeTitleActive]}>
+                          Sản Phẩm
+                        </Text>
+                        <Text style={styles.promoTypeSub}>Giảm theo món</Text>
+                      </TouchableOpacity>
                     </View>
+
+                    {/* Thời hạn hiệu lực */}
+                    <Text style={styles.formFieldLabel}>Thời hạn hiệu lực (số ngày):</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {['7', '14', '30', '90'].map((d) => (
+                        <TouchableOpacity
+                          key={d}
+                          style={[
+                            styles.durationPill,
+                            formValues.durationDays === d && styles.durationPillActive,
+                          ]}
+                          onPress={() => setFormValues((v) => ({ ...v, durationDays: d }))}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.durationPillText,
+                              formValues.durationDays === d && styles.durationPillTextActive,
+                            ]}
+                          >
+                            {d} ngày
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                      <TextInput
+                        style={[styles.formInput, { width: 85, paddingVertical: 6, textAlign: 'center' }]}
+                        placeholder="Số ngày"
+                        placeholderTextColor="#9ca3af"
+                        keyboardType="numeric"
+                        value={formValues.durationDays}
+                        onChangeText={(t) => setFormValues((v) => ({ ...v, durationDays: t }))}
+                      />
+                    </View>
+
+                    {/* --- CẤU HÌNH CHO 1: VOUCHER --- */}
+                    {formValues.loaiKhuyenMai === 'voucher' && (
+                      <View style={styles.promoConfigBox}>
+                        <Text style={[styles.promoConfigBoxTitle, { color: '#b45309' }]}>
+                          🎟️ Cấu hình Mã Voucher (Khách tự nhập)
+                        </Text>
+
+                        <Text style={styles.formFieldLabel}>Mã Code áp dụng (*):</Text>
+                        <TextInput
+                          style={[
+                            styles.formInput,
+                            { textTransform: 'uppercase', fontWeight: '800', letterSpacing: 1.5, borderColor: '#f59e0b', backgroundColor: '#fffbeb' },
+                          ]}
+                          placeholder="VD: SNACK2026, BANHMI10..."
+                          placeholderTextColor="#9ca3af"
+                          autoCapitalize="characters"
+                          value={formValues.maCode}
+                          onChangeText={(t) => setFormValues((v) => ({ ...v, maCode: t }))}
+                        />
+
+                        {/* Kiểu giảm & Mức giảm */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Kiểu giảm giá:</Text>
+                            <View style={styles.toggleRow}>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.loaiGiamGia === 'phan_tram' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, loaiGiamGia: 'phan_tram' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.loaiGiamGia === 'phan_tram' && styles.toggleBtnTextActive]}>
+                                  % Phần trăm
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.loaiGiamGia === 'so_tien' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, loaiGiamGia: 'so_tien' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.loaiGiamGia === 'so_tien' && styles.toggleBtnTextActive]}>
+                                  VNĐ Tiền mặt
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Mức giảm (*):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder={formValues.loaiGiamGia === 'phan_tram' ? 'VD: 15 (%)' : 'VD: 20000 (VNĐ)'}
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.giaTriGiam}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, giaTriGiam: t }))}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Đơn tối thiểu & Giảm tối đa */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Đơn tối thiểu (VNĐ):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder="50000"
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.giaTriDonToiThieu}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, giaTriDonToiThieu: t }))}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Giảm tối đa (VNĐ):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder={formValues.loaiGiamGia === 'phan_tram' ? '30000' : 'Không giới hạn'}
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.giamToiDa}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, giamToiDa: t }))}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Tổng lượt & Lượt/khách */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Tổng lượt toàn sàn:</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder="Không giới hạn"
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.gioiHanSuDung}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, gioiHanSuDung: t }))}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Lượt/mỗi khách:</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder="1"
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.gioiHanMoiKhach}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, gioiHanMoiKhach: t }))}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* --- CẤU HÌNH CHO 2: THEO HÓA ĐƠN --- */}
+                    {formValues.loaiKhuyenMai === 'hoa_don' && (
+                      <View style={[styles.promoConfigBox, { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }]}>
+                        <Text style={[styles.promoConfigBoxTitle, { color: '#0369a1' }]}>
+                          🧾 Cấu hình Khuyến mãi theo Hóa Đơn (Tự động)
+                        </Text>
+
+                        {/* Kiểu giảm & Mức giảm */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Kiểu giảm giá:</Text>
+                            <View style={styles.toggleRow}>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.hdLoaiGiamGia === 'phan_tram' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, hdLoaiGiamGia: 'phan_tram' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.hdLoaiGiamGia === 'phan_tram' && styles.toggleBtnTextActive]}>
+                                  % Phần trăm
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.hdLoaiGiamGia === 'so_tien' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, hdLoaiGiamGia: 'so_tien' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.hdLoaiGiamGia === 'so_tien' && styles.toggleBtnTextActive]}>
+                                  VNĐ Tiền mặt
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Mức giảm (*):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder={formValues.hdLoaiGiamGia === 'phan_tram' ? 'VD: 10 (%)' : 'VD: 30000 (VNĐ)'}
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.hdGiaTriGiam}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, hdGiaTriGiam: t }))}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Đơn tối thiểu & Giảm tối đa */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Đơn tối thiểu áp dụng (*):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder="100000"
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.hdGiaTriDonToiThieu}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, hdGiaTriDonToiThieu: t }))}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Giảm tối đa (VNĐ):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder={formValues.hdLoaiGiamGia === 'phan_tram' ? '50000' : 'Không giới hạn'}
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.hdGiamToiDa}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, hdGiamToiDa: t }))}
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.promoHintCard}>
+                          <Text style={styles.promoHintText}>
+                            💡 Khách không cần nhập mã. Khi giỏ hàng đạt ngưỡng tối thiểu, hệ thống sẽ tự động trừ ưu đãi tốt nhất cho khách khi thanh toán.
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* --- CẤU HÌNH CHO 3: THEO SẢN PHẨM --- */}
+                    {formValues.loaiKhuyenMai === 'san_pham' && (
+                      <View style={[styles.promoConfigBox, { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' }]}>
+                        <Text style={[styles.promoConfigBoxTitle, { color: '#6b21a8' }]}>
+                          🍟 Cấu hình Khuyến mãi theo Món Ăn
+                        </Text>
+
+                        <Text style={styles.formFieldLabel}>Chọn món ăn vặt áp dụng (*):</Text>
+                        <TouchableOpacity
+                          style={styles.pickerSelectorBtn}
+                          onPress={() => {
+                            const options = cachedProducts.map((p) => {
+                              const pId = p.maSanPham || p.id;
+                              const pPrice = formatVnd(p.giaBan || p.donGiaBan || 0);
+                              return {
+                                label: `${p.tenSanPham || p.tenMon || 'Món'} (${pPrice})`,
+                                value: pId,
+                              };
+                            });
+                            openPicker('Chọn món ăn áp dụng', options, (val) => {
+                              setFormValues((v) => ({ ...v, spMaSanPham: val }));
+                            });
+                          }}
+                        >
+                          <Text style={styles.pickerSelectorText}>
+                            {cachedProducts.find((p) => (p.maSanPham || p.id) === formValues.spMaSanPham)?.tenSanPham || 'Chọn món áp dụng...'}
+                          </Text>
+                          <Text style={styles.pickerSelectorArrow}>▼</Text>
+                        </TouchableOpacity>
+
+                        {/* Kiểu giảm & Mức giảm */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Kiểu giảm giá:</Text>
+                            <View style={styles.toggleRow}>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.spLoaiGiamGia === 'phan_tram' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, spLoaiGiamGia: 'phan_tram' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.spLoaiGiamGia === 'phan_tram' && styles.toggleBtnTextActive]}>
+                                  % Phần trăm
+                                </Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.toggleBtn, formValues.spLoaiGiamGia === 'so_tien' && styles.toggleBtnActive]}
+                                onPress={() => setFormValues((v) => ({ ...v, spLoaiGiamGia: 'so_tien' }))}
+                              >
+                                <Text style={[styles.toggleBtnText, formValues.spLoaiGiamGia === 'so_tien' && styles.toggleBtnTextActive]}>
+                                  VNĐ Tiền mặt
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.formFieldLabel}>Mức giảm (*):</Text>
+                            <TextInput
+                              style={styles.formInput}
+                              placeholder={formValues.spLoaiGiamGia === 'phan_tram' ? 'VD: 20 (%)' : 'VD: 15000 (VNĐ)'}
+                              placeholderTextColor="#9ca3af"
+                              keyboardType="numeric"
+                              value={formValues.spGiaTriGiam}
+                              onChangeText={(t) => setFormValues((v) => ({ ...v, spGiaTriGiam: t }))}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Xem trước giá sau giảm */}
+                        {(() => {
+                          const chosen = cachedProducts.find((p) => (p.maSanPham || p.id) === formValues.spMaSanPham);
+                          if (!chosen) return null;
+                          const originalPrice = chosen.giaBan || chosen.donGiaBan || 0;
+                          const discountVal = Number(formValues.spGiaTriGiam) || 0;
+                          let finalPrice = originalPrice;
+                          if (formValues.spLoaiGiamGia === 'phan_tram') {
+                            finalPrice = Math.max(0, originalPrice - (originalPrice * discountVal / 100));
+                          } else {
+                            finalPrice = Math.max(0, originalPrice - discountVal);
+                          }
+                          return (
+                            <View style={styles.previewPriceBox}>
+                              <Text style={styles.previewPriceLabel}>Giá bán thực tế sau khi áp dụng ưu đãi:</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <Text style={styles.previewOldPrice}>{formatVnd(originalPrice)}</Text>
+                                <Text style={{ color: '#94a3b8' }}>→</Text>
+                                <Text style={styles.previewNewPrice}>{formatVnd(finalPrice)}</Text>
+                                <Text style={styles.previewSaveTag}>
+                                  (Tiết kiệm {formatVnd(originalPrice - finalPrice)})
+                                </Text>
+                              </View>
+                            </View>
+                          );
+                        })()}
+                      </View>
+                    )}
                   </View>
                 )}
 
@@ -2072,6 +2670,296 @@ export default function ManagerModuleDetailModal({ visible, moduleKey, onClose, 
         </Modal>
 
         {/* =========================================================================
+            ORDER DETAIL POP-UP MODAL (CHI TIẾT ĐƠN HÀNG KHI NHẤN VÀO ĐƠN)
+        ========================================================================= */}
+        <Modal
+          visible={orderDetailModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setOrderDetailModalVisible(false)}
+        >
+          <View style={styles.orderModalOverlay}>
+            <View style={[styles.orderModalContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+              {/* Modal Header */}
+              <View style={styles.orderModalHeader}>
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Text style={styles.orderModalTitle}>
+                      Chi tiết Đơn #{selectedOrder?.maCode || selectedOrder?.maDonHang?.slice(0, 8)}
+                    </Text>
+                    {selectedOrder?.trangThaiDonHang && (
+                      <View style={[styles.badgePill, { backgroundColor: getStatusBadge(selectedOrder.trangThaiDonHang).bg }]}>
+                        <Text style={[styles.badgePillText, { color: getStatusBadge(selectedOrder.trangThaiDonHang).color }]}>
+                          {getStatusBadge(selectedOrder.trangThaiDonHang).label}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.orderModalSubtitle}>
+                    🕒 {selectedOrder?.ngayTao ? new Date(selectedOrder.ngayTao).toLocaleString('vi-VN') : 'Mới đây'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.orderModalCloseBtn}
+                  onPress={() => setOrderDetailModalVisible(false)}
+                >
+                  <Text style={styles.orderModalCloseBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Body */}
+              {loadingOrderDetail ? (
+                <View style={styles.orderModalLoadingBox}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.orderModalLoadingText}>Đang tải chi tiết đơn hàng từ máy chủ...</Text>
+                </View>
+              ) : selectedOrder ? (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.orderModalScrollContent}>
+                  {/* Card 1: Khách hàng & Giao hàng */}
+                  <View style={styles.orderDetailCard}>
+                    <View style={styles.orderDetailCardHeader}>
+                      <Text style={styles.orderDetailCardTitle}>👤 Người nhận & Giao vận</Text>
+                    </View>
+                    <View style={styles.orderDetailRow}>
+                      <Text style={styles.orderDetailLabel}>Người nhận:</Text>
+                      <Text style={styles.orderDetailValueStrong}>{selectedOrder.tenNguoiNhan || 'Khách hàng'}</Text>
+                    </View>
+                    <View style={styles.orderDetailRow}>
+                      <Text style={styles.orderDetailLabel}>Số điện thoại:</Text>
+                      <Text style={styles.orderDetailValuePhone}>{selectedOrder.sdtNguoiNhan || 'Không có SĐT'}</Text>
+                    </View>
+                    <View style={styles.orderDetailRow}>
+                      <Text style={styles.orderDetailLabel}>Địa chỉ giao:</Text>
+                      <Text style={styles.orderDetailValue}>{selectedOrder.diaChiGiaoHang || 'Tại quầy / Cửa hàng'}</Text>
+                    </View>
+                    {selectedOrder.ghiChu ? (
+                      <View style={styles.orderDetailRow}>
+                        <Text style={styles.orderDetailLabel}>Ghi chú:</Text>
+                        <Text style={[styles.orderDetailValue, { color: '#b45309', fontStyle: 'italic' }]}>
+                          {selectedOrder.ghiChu}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Card 2: Thanh toán & Hóa đơn */}
+                  <View style={styles.orderDetailCard}>
+                    <View style={styles.orderDetailCardHeader}>
+                      <Text style={styles.orderDetailCardTitle}>💳 Thanh toán & Hóa đơn</Text>
+                    </View>
+                    <View style={styles.orderDetailRow}>
+                      <Text style={styles.orderDetailLabel}>Phương thức TT:</Text>
+                      <Text style={styles.orderDetailValueStrong}>
+                        {selectedOrder.phuongThucThanhToan?.toUpperCase() || 'COD'}
+                      </Text>
+                    </View>
+                    <View style={styles.orderDetailRow}>
+                      <Text style={styles.orderDetailLabel}>Trạng thái TT:</Text>
+                      <View
+                        style={[
+                          styles.paymentStatusPill,
+                          {
+                            backgroundColor:
+                              selectedOrder.trangThaiThanhToan === 'da_thanh_toan' ? '#dcfce7' : '#fef3c7',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color:
+                              selectedOrder.trangThaiThanhToan === 'da_thanh_toan' ? '#15803d' : '#b45309',
+                            fontSize: 12,
+                            fontWeight: '700',
+                          }}
+                        >
+                          {selectedOrder.trangThaiThanhToan === 'da_thanh_toan'
+                            ? '✅ Đã thanh toán'
+                            : '⏳ Chưa thanh toán'}
+                        </Text>
+                      </View>
+                    </View>
+                    {selectedOrder.hoaDon ? (
+                      <View style={styles.orderDetailRow}>
+                        <Text style={styles.orderDetailLabel}>Hóa đơn xuất:</Text>
+                        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                          <Text style={{ fontWeight: '800', color: '#0369a1' }}>
+                            🧾 Số HĐ: {selectedOrder.hoaDon.soHoaDon}
+                          </Text>
+                          {selectedOrder.hoaDon.ngayXuatHoaDon && (
+                            <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                              Xuất: {new Date(selectedOrder.hoaDon.ngayXuatHoaDon).toLocaleString('vi-VN')}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {/* Card 3: Danh sách món ăn */}
+                  <View style={styles.orderDetailCard}>
+                    <View style={styles.orderDetailCardHeader}>
+                      <Text style={styles.orderDetailCardTitle}>
+                        🍱 Món ăn đã đặt ({(selectedOrder.chiTiets || selectedOrder.chiTietDonHangs || []).length})
+                      </Text>
+                    </View>
+                    {((selectedOrder.chiTiets?.length ? selectedOrder.chiTiets : selectedOrder.chiTietDonHangs) || []).map((item, i) => (
+                      <View key={item.maChiTietDonHang || i} style={styles.orderItemRow}>
+                        <Image
+                          source={{ uri: item.hinhAnhDaiDien || getProductImage(item) }}
+                          defaultSource={{ uri: DEFAULT_SNACK_IMAGE }}
+                          style={styles.orderItemImg}
+                          resizeMode="cover"
+                        />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.orderItemName} numberOfLines={2}>
+                            {item.tenSanPham || 'Món ăn vặt'}
+                          </Text>
+                          <Text style={styles.orderItemPrice}>
+                            {formatVnd(item.giaBan || item.donGia)} x {item.soLuong}
+                          </Text>
+                        </View>
+                        <Text style={styles.orderItemTotal}>
+                          {formatVnd(item.thanhTien || ((item.giaBan || item.donGia || 0) * item.soLuong))}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Card 4: Tổng kết thanh toán */}
+                  <View style={styles.pricingCard}>
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Tiền món ăn:</Text>
+                      <Text style={styles.pricingValue}>{formatVnd(selectedOrder.tienHang)}</Text>
+                    </View>
+                    {Number(selectedOrder.tienGiamGia) > 0 && (
+                      <View style={styles.pricingRow}>
+                        <Text style={styles.pricingLabel}>Giảm giá voucher:</Text>
+                        <Text style={[styles.pricingValue, { color: '#16a34a', fontWeight: '700' }]}>
+                          -{formatVnd(selectedOrder.tienGiamGia)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingLabel}>Phí giao hàng:</Text>
+                      <Text style={styles.pricingValue}>{formatVnd(selectedOrder.phiVanChuyen)}</Text>
+                    </View>
+                    <View style={styles.pricingDivider} />
+                    <View style={styles.pricingRow}>
+                      <Text style={styles.pricingTotalLabel}>Tổng thanh toán:</Text>
+                      <Text style={styles.pricingTotalValue}>{formatVnd(selectedOrder.tongTienThanhToan)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Card 5: Lịch sử xử lý đơn hàng */}
+                  {selectedOrder.lichSus && selectedOrder.lichSus.length > 0 && (
+                    <View style={styles.orderDetailCard}>
+                      <View style={styles.orderDetailCardHeader}>
+                        <Text style={styles.orderDetailCardTitle}>⏱️ Lịch sử xử lý đơn hàng</Text>
+                      </View>
+                      {selectedOrder.lichSus.map((history, hIdx) => (
+                        <View key={history.maLichSu || hIdx} style={styles.historyRow}>
+                          <View style={styles.historyDot} />
+                          <View style={{ flex: 1, marginLeft: 8 }}>
+                            <Text style={styles.historyTitle}>
+                              {history.trangThaiMoi ? getStatusBadge(history.trangThaiMoi).label : 'Cập nhật'}
+                            </Text>
+                            {history.ghiChu ? (
+                              <Text style={styles.historyNote}>{history.ghiChu}</Text>
+                            ) : null}
+                            <Text style={styles.historyTime}>
+                              {history.thoiGianThayDoi ? new Date(history.thoiGianThayDoi).toLocaleString('vi-VN') : ''}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={{ height: 16 }} />
+                </ScrollView>
+              ) : null}
+
+              {/* Modal Actions Footer */}
+              <View style={styles.orderModalFooter}>
+                {selectedOrder?.trangThaiDonHang === 'cho_xac_nhan' && (
+                  <TouchableOpacity
+                    style={[styles.orderModalActionBtn, { backgroundColor: '#16a34a' }]}
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      await handleUpdateOrderStatus(selectedOrder.maDonHang || selectedOrder.id, 'da_xac_nhan');
+                      const fresh = await getOrderDetail(selectedOrder.maDonHang || selectedOrder.id).catch(() => null);
+                      if (fresh) setSelectedOrder(fresh);
+                    }}
+                  >
+                    <Text style={styles.orderModalActionBtnText}>✓ Duyệt đơn</Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedOrder?.trangThaiDonHang === 'da_xac_nhan' && (
+                  <TouchableOpacity
+                    style={[styles.orderModalActionBtn, { backgroundColor: '#2563eb' }]}
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      await handleUpdateOrderStatus(selectedOrder.maDonHang || selectedOrder.id, 'dang_giao');
+                      const fresh = await getOrderDetail(selectedOrder.maDonHang || selectedOrder.id).catch(() => null);
+                      if (fresh) setSelectedOrder(fresh);
+                    }}
+                  >
+                    <Text style={styles.orderModalActionBtnText}>🚚 Giao hàng</Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedOrder?.trangThaiDonHang === 'dang_giao' && (
+                  <TouchableOpacity
+                    style={[styles.orderModalActionBtn, { backgroundColor: '#059669' }]}
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      await handleUpdateOrderStatus(selectedOrder.maDonHang || selectedOrder.id, 'da_giao');
+                      const fresh = await getOrderDetail(selectedOrder.maDonHang || selectedOrder.id).catch(() => null);
+                      if (fresh) setSelectedOrder(fresh);
+                    }}
+                  >
+                    <Text style={styles.orderModalActionBtnText}>🏁 Hoàn tất giao</Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedOrder?.trangThaiDonHang === 'da_giao' && (
+                  <TouchableOpacity
+                    style={[styles.orderModalActionBtn, { backgroundColor: '#0284c7' }]}
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      await handleGenerateInvoice(selectedOrder.maDonHang || selectedOrder.id);
+                      const fresh = await getOrderDetail(selectedOrder.maDonHang || selectedOrder.id).catch(() => null);
+                      if (fresh) setSelectedOrder(fresh);
+                    }}
+                  >
+                    <Text style={styles.orderModalActionBtnText}>🧾 Xuất HĐ</Text>
+                  </TouchableOpacity>
+                )}
+
+                {selectedOrder?.trangThaiDonHang === 'cho_xac_nhan' && (
+                  <TouchableOpacity
+                    style={[styles.orderModalActionBtn, { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#ef4444' }]}
+                    activeOpacity={0.85}
+                    onPress={() => handleCancelOrder(selectedOrder.maDonHang || selectedOrder.id)}
+                  >
+                    <Text style={[styles.orderModalActionBtnText, { color: '#b91c1c' }]}>✕ Hủy đơn</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={styles.orderModalCloseFooterBtn}
+                  activeOpacity={0.8}
+                  onPress={() => setOrderDetailModalVisible(false)}
+                >
+                  <Text style={styles.orderModalCloseFooterBtnText}>Đóng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* =========================================================================
             GENERIC PICKER MODAL (CHO DROPDOWN TRONG FORM)
         ========================================================================= */}
         <Modal
@@ -2123,15 +3011,17 @@ const styles = StyleSheet.create({
   topModalHeader: {
     backgroundColor: '#1C0B04',
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#431407',
+    borderBottomColor: '#3d1607',
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 44,
+    minHeight: 40,
+    gap: 8,
   },
   backButton: {
     width: 34,
@@ -2145,24 +3035,39 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#fed7aa',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
+  },
+  headerTitleWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 4,
   },
   moduleHeaderTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
+    flexShrink: 1,
   },
-  moduleHeaderSubtitle: {
-    fontSize: 11,
-    color: '#fed7aa',
-    marginTop: 2,
+  headerActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   headerAddBtn: {
     backgroundColor: colors.primary,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerAddBtnText: {
     color: '#fff',
@@ -2745,5 +3650,423 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#334155',
     fontWeight: '600',
+  },
+  // ORDER CARD TAP HINTS
+  cardDetailHintBadge: {
+    backgroundColor: '#fff7ed',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  cardDetailHintText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ea580c',
+  },
+  cardDetailBar: {
+    backgroundColor: '#fffaf5',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+  },
+  cardDetailBarText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#c2410c',
+  },
+  // ORDER DETAIL MODAL POP-UP STYLES
+  orderModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  orderModalContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '88%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  orderModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  orderModalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  orderModalSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  orderModalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderModalCloseBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  orderModalLoadingBox: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  orderModalLoadingText: {
+    marginTop: 12,
+    fontSize: 13,
+    color: '#64748b',
+  },
+  orderModalScrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+  },
+  orderDetailCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  orderDetailCardHeader: {
+    marginBottom: 10,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  orderDetailCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  orderDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  orderDetailLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    width: 100,
+  },
+  orderDetailValue: {
+    fontSize: 12,
+    color: '#1e293b',
+    flex: 1,
+    textAlign: 'right',
+  },
+  orderDetailValueStrong: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    flex: 1,
+    textAlign: 'right',
+  },
+  orderDetailValuePhone: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
+    flex: 1,
+    textAlign: 'right',
+  },
+  paymentStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  orderItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  orderItemImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  orderItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  orderItemPrice: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  orderItemTotal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+    marginLeft: 8,
+  },
+  pricingCard: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  pricingLabel: {
+    fontSize: 13,
+    color: '#78350f',
+  },
+  pricingValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1c1917',
+  },
+  pricingDivider: {
+    height: 1,
+    backgroundColor: '#fed7aa',
+    marginVertical: 6,
+  },
+  pricingTotalLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#431407',
+  },
+  pricingTotalValue: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#ea580c',
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  historyDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563eb',
+    marginTop: 4,
+  },
+  historyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  historyNote: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  historyTime: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  orderModalFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
+  },
+  orderModalActionBtn: {
+    flex: 1,
+    minWidth: 120,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderModalActionBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  orderModalCloseFooterBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderModalCloseFooterBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+
+  // PROMOTION TYPES & DETAILS (CHUẨN WEB-APP)
+  promoTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  promoTypeBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+  },
+  promoTypeBtnActive: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#ea580c',
+  },
+  promoTypeIcon: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  promoTypeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  promoTypeTitleActive: {
+    color: '#ea580c',
+  },
+  promoTypeSub: {
+    fontSize: 9,
+    color: '#94a3b8',
+    marginTop: 1,
+  },
+  durationPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  durationPillActive: {
+    backgroundColor: '#ea580c',
+    borderColor: '#ea580c',
+  },
+  durationPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  durationPillTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  promoConfigBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+  },
+  promoConfigBoxTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f1f5f9',
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleBtnActive: {
+    backgroundColor: '#ea580c',
+  },
+  toggleBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  toggleBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  promoHintCard: {
+    marginTop: 10,
+    padding: 8,
+    backgroundColor: '#e0f2fe',
+    borderRadius: 8,
+  },
+  promoHintText: {
+    fontSize: 11,
+    color: '#0369a1',
+    lineHeight: 16,
+  },
+  previewPriceBox: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9d5ff',
+  },
+  previewPriceLabel: {
+    fontSize: 11,
+    color: '#6b21a8',
+    fontWeight: '600',
+  },
+  previewOldPrice: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textDecorationLine: 'line-through',
+  },
+  previewNewPrice: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ea580c',
+  },
+  previewSaveTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16a34a',
   },
 });

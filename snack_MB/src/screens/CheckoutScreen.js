@@ -14,12 +14,14 @@ import { colors, spacing, borderRadius } from '../constants/theme';
 import { getCart } from '../api/cart';
 import { calculateTempOrder, createOrder } from '../api/orders';
 import { useAuthStore } from '../store/authStore';
+import { useCartStore } from '../store/cartStore';
 
 const BASE_SHIPPING_FEE = 20000;
 const FREESHIP_THRESHOLD = 200000;
 
-export default function CheckoutScreen({ navigation }) {
+export default function CheckoutScreen({ route, navigation }) {
   const { user } = useAuthStore();
+  const { appliedComboVouchers, getPrimaryComboVoucherCode, clearComboVouchers } = useCartStore();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -49,7 +51,8 @@ export default function CheckoutScreen({ navigation }) {
         setCartItems(items);
 
         if (items.length > 0) {
-          runCalculation(items, null);
+          const initialVoucher = route?.params?.voucherCode || (typeof getPrimaryComboVoucherCode === 'function' ? getPrimaryComboVoucherCode() : null);
+          runCalculation(items, initialVoucher, true);
         }
       } catch (err) {
         console.warn('Lỗi lấy giỏ hàng checkout:', err);
@@ -61,7 +64,7 @@ export default function CheckoutScreen({ navigation }) {
     fetchCartItems();
   }, []);
 
-  const runCalculation = async (items, voucherToApply) => {
+  const runCalculation = async (items, voucherToApply, isAuto = false) => {
     if (!items || items.length === 0) return;
     try {
       setCalcLoading(true);
@@ -85,7 +88,9 @@ export default function CheckoutScreen({ navigation }) {
       setCalcResult(res);
       if (voucherToApply) {
         setAppliedVoucher(voucherToApply);
-        Alert.alert('Thành công', `Đã áp dụng mã voucher "${voucherToApply}"!`);
+        if (!isAuto && !voucherToApply.startsWith('COMBO_')) {
+          Alert.alert('Thành công', `Đã áp dụng mã voucher "${voucherToApply}"!`);
+        }
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Không thể áp dụng mã voucher này';
@@ -152,6 +157,9 @@ export default function CheckoutScreen({ navigation }) {
       };
 
       const result = await createOrder(payload);
+      if (typeof clearComboVouchers === 'function') {
+        clearComboVouchers();
+      }
       Alert.alert(
         'Đặt hàng thành công! 🎉',
         `Đơn hàng #${result.maCode || ''} của bạn đã được tiếp nhận và chuyển đến bếp.`,
@@ -249,27 +257,63 @@ export default function CheckoutScreen({ navigation }) {
         {/* Cart Summary */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>📦 Món ăn trong đơn ({cartItems.length})</Text>
-          {cartItems.map((item) => (
-            <View key={item.maGioHang} style={styles.itemRow}>
-              <Image
-                source={{
-                  uri: item.hinhAnhDaiDien || 'https://i.ibb.co/qMdPGF85/kho-ga-la-chanh.png',
-                }}
-                style={styles.itemThumb}
-              />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.itemTitle} numberOfLines={1}>
-                  {item.tenSanPham}
-                </Text>
-                <Text style={styles.itemSub}>
-                  {formatVnd(item.giaBan)} x {item.soLuong}
-                </Text>
+          {cartItems.map((item) => {
+            const matchedCombo = (appliedComboVouchers || []).find((c) =>
+              (c.itemIds || []).includes(item.maSanPham)
+            );
+            const hasDiscount = matchedCombo && matchedCombo.originalPrice > 0 && matchedCombo.comboPrice > 0;
+            const discountRatio = hasDiscount ? matchedCombo.comboPrice / matchedCombo.originalPrice : 1;
+            const itemUnitDiscounted = Math.round(item.giaBan * discountRatio);
+            const itemTotalDiscounted = itemUnitDiscounted * item.soLuong;
+
+            return (
+              <View key={item.maGioHang} style={styles.itemRow}>
+                <Image
+                  source={{
+                    uri: item.hinhAnhDaiDien || 'https://i.ibb.co/qMdPGF85/kho-ga-la-chanh.png',
+                  }}
+                  style={styles.itemThumb}
+                />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.itemTitle} numberOfLines={1}>
+                    {item.tenSanPham}
+                  </Text>
+                  {hasDiscount ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+                        {formatVnd(itemUnitDiscounted)}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'line-through' }}>
+                        {formatVnd(item.giaBan)}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                        x {item.soLuong}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.itemSub}>
+                      {formatVnd(item.giaBan)} x {item.soLuong}
+                    </Text>
+                  )}
+                  {hasDiscount && (
+                    <Text style={{ fontSize: 11, color: '#16a34a', fontWeight: '600', marginTop: 1 }}>
+                      🎁 {matchedCombo.comboName}
+                    </Text>
+                  )}
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.itemTotal}>
+                    {formatVnd(hasDiscount ? itemTotalDiscounted : (item.thanhTien || item.giaBan * item.soLuong))}
+                  </Text>
+                  {hasDiscount && (
+                    <Text style={{ fontSize: 11, color: colors.textMuted, textDecorationLine: 'line-through' }}>
+                      {formatVnd(item.giaBan * item.soLuong)}
+                    </Text>
+                  )}
+                </View>
               </View>
-              <Text style={styles.itemTotal}>
-                {formatVnd(item.thanhTien || item.giaBan * item.soLuong)}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Voucher Section */}
@@ -400,8 +444,12 @@ export default function CheckoutScreen({ navigation }) {
           )}
           {discount > 0 && (
             <View style={styles.calcRow}>
-              <Text style={[styles.calcLabel, { color: '#16a34a' }]}>Giảm giá voucher:</Text>
-              <Text style={[styles.calcValue, { color: '#16a34a' }]}>-{formatVnd(discount)}</Text>
+              <Text style={[styles.calcLabel, { color: '#16a34a', fontWeight: '700' }]}>
+                {appliedVoucher?.startsWith('COMBO_') ? 'Ưu đãi Combo ăn vặt:' : 'Giảm giá voucher:'}
+              </Text>
+              <Text style={[styles.calcValue, { color: '#16a34a', fontWeight: '800' }]}>
+                -{formatVnd(discount)}
+              </Text>
             </View>
           )}
           <View style={[styles.calcRow, styles.totalRow]}>
