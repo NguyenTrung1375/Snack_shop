@@ -9,6 +9,7 @@ export const useUpdateProduct = () => { const qc = useQueryClient(); return useM
 export const useUpdateProductStatus = () => { const qc = useQueryClient(); return useMutation({ mutationFn: ({id, status}) => api.updateProductStatus(id, status), onSuccess: () => qc.invalidateQueries(['products']) }); };
 export const useDeleteProduct = () => { const qc = useQueryClient(); return useMutation({ mutationFn: api.deleteProduct, onSuccess: () => qc.invalidateQueries(['products']) }); };
 export const useProductReviews = (id) => useQuery({ queryKey: ['product-reviews', id], queryFn: () => api.getProductReviews(id), enabled: !!id });
+export const useFeaturedReviews = (params) => useQuery({ queryKey: ['featured-reviews', params], queryFn: () => api.getFeaturedReviews(params) });
 
 export const useCategories = () => useQuery({ queryKey: ['categories'], queryFn: api.getCategories });
 export const useCreateCategory = () => { const qc = useQueryClient(); return useMutation({ mutationFn: api.createCategory, onSuccess: () => qc.invalidateQueries(['categories']) }); };

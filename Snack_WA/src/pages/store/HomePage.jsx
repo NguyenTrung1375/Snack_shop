@@ -19,11 +19,11 @@ import {
   LeftOutlined,
   RightOutlined
 } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress } from 'antd';
+import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress, Rate, Avatar } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../shared/auth/authStore';
-import { useProductsQuery, useCategories } from '../../features/catalog/hooks';
-import { formatVnd } from '../../shared/utils/formatters';
+import { useProductsQuery, useCategories, useFeaturedReviews } from '../../features/catalog/hooks';
+import { formatVnd, formatDate } from '../../shared/utils/formatters';
 import { SNACK_COMBOS } from '../../shared/constants/snackCombos';
 import { useComboCartStore } from '../../features/cart/comboCartStore';
 import { addToCart } from '../../features/cart/api';
@@ -164,29 +164,52 @@ export default function HomePage() {
     setComboSlideIndex((prev) => (prev >= comboMaxIndex ? 0 : prev + 1));
   };
 
-  // Danh mục hiển thị (lấy thực tế từ API /loai-san-pham)
-  const displayCategories = useMemo(() => {
-    const flattened = flattenCategoryTree(rawCategories || []);
-    if (!flattened || flattened.length === 0) return fallbackSnackCategories;
-    return flattened.slice(0, 6).map((cat) => {
-      const lower = cat.name.toLowerCase();
-      let emoji = '🍘';
-      if (lower.includes('gà')) emoji = '🍗';
-      else if (lower.includes('bò')) emoji = '🥩';
-      else if (lower.includes('heo') || lower.includes('chà bông')) emoji = '🥓';
-      else if (lower.includes('bánh tráng')) emoji = '🌯';
-      else if (lower.includes('mực') || lower.includes('cá')) emoji = '🦑';
-      else if (lower.includes('khoai') || lower.includes('bắp') || lower.includes('ngô')) emoji = '🍿';
-      else if (lower.includes('trái cây') || lower.includes('xoài')) emoji = '🥭';
-      else if (lower.includes('khô')) emoji = '🥢';
-      return {
-        id: cat.id,
-        name: cat.name,
-        emoji,
-        tag: cat.isChild ? 'Mục con' : 'Đặc sản',
-      };
-    });
-  }, [rawCategories]);
+  // Lấy dữ liệu đánh giá thực tế từ database (ưu tiên mới nhất)
+  const { data: rawReviews = [], isLoading: isLoadingReviews } = useFeaturedReviews({ limit: 15, sapXep: 'moi_nhat' });
+  const sortedReviews = useMemo(() => {
+    if (!rawReviews || !Array.isArray(rawReviews)) return [];
+    return [...rawReviews].sort((a, b) => new Date(b.ngayTao || 0) - new Date(a.ngayTao || 0));
+  }, [rawReviews]);
+
+  // Review Slider State (Hiển thị 3 đánh giá trên desktop, 2 trên tablet, 1 trên mobile)
+  const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
+  const [isReviewPaused, setIsReviewPaused] = useState(false);
+  const [reviewItemsPerView, setReviewItemsPerView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 640) return 1;
+      if (window.innerWidth < 1024) return 2;
+      return 3;
+    }
+    return 3;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) setReviewItemsPerView(1);
+      else if (window.innerWidth < 1024) setReviewItemsPerView(2);
+      else setReviewItemsPerView(3);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const reviewMaxIndex = Math.max(0, sortedReviews.length - reviewItemsPerView);
+
+  useEffect(() => {
+    if (isReviewPaused || sortedReviews.length <= reviewItemsPerView) return;
+    const interval = setInterval(() => {
+      setReviewSlideIndex((prev) => (prev >= reviewMaxIndex ? 0 : prev + 1));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isReviewPaused, reviewMaxIndex, sortedReviews.length, reviewItemsPerView]);
+
+  const handleReviewPrev = () => {
+    setReviewSlideIndex((prev) => (prev <= 0 ? reviewMaxIndex : prev - 1));
+  };
+
+  const handleReviewNext = () => {
+    setReviewSlideIndex((prev) => (prev >= reviewMaxIndex ? 0 : prev + 1));
+  };
 
   // Các sản phẩm Flash Sale (lọc các món có khuyến mãi thật, nếu chưa có thì lấy top 4 bán chạy)
   const flashSaleProducts = useMemo(() => {
@@ -1251,55 +1274,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* 6. Danh Mục Món Ăn Vặt Được Yêu Thích */}
-      <section>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-          <div>
-            <Typography.Title level={3} style={{ margin: 0, color: '#431407', fontWeight: 900, letterSpacing: '-0.3px' }}>
-              Danh Mục Món Ăn Vặt Được Yêu Thích
-            </Typography.Title>
-            <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
-              Đầy đủ các loại đồ khô, bánh tráng cay xé, ăn vặt nhâm nhi xem phim cả ngày
-            </Typography.Text>
-          </div>
-          <Link to="/san-pham" style={{ color: '#ea580c', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.92rem' }}>
-            Xem tất cả danh mục <ArrowRightOutlined />
-          </Link>
-        </div>
-
-        <Row gutter={[16, 16]}>
-          {displayCategories.map((cat, idx) => (
-            <Col xs={12} sm={8} md={4} key={cat.id || idx}>
-              <Link to={cat.id ? `/san-pham?cat=${cat.id}` : `/san-pham?q=${encodeURIComponent(cat.name)}`} style={{ textDecoration: 'none' }}>
-                <Card 
-                  hoverable
-                  style={{ 
-                    textAlign: 'center', 
-                    borderRadius: 20, 
-                    border: '1.5px solid #fed7aa',
-                    background: '#ffffff',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 12px rgba(234, 88, 12, 0.04)'
-                  }}
-                  styles={{ body: { padding: '18px 12px' } }}
-                >
-                  <div style={{ fontSize: 42, marginBottom: 8, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
-                    {cat.emoji}
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#292524', marginBottom: 6 }}>
-                    {cat.name}
-                  </div>
-                  <Tag color="orange" style={{ margin: 0, fontSize: '10px', borderRadius: 6, fontWeight: 700 }}>
-                    {cat.tag}
-                  </Tag>
-                </Card>
-              </Link>
-            </Col>
-          ))}
-        </Row>
-      </section>
-
-      {/* 7. Vì Sao Bạn Sẽ Mê Snack Shop? (Quality Pillars) */}
+      {/* 6. Vì Sao Bạn Sẽ Mê Snack Shop? (Quality Pillars) */}
       <section style={{
         background: 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)',
         borderRadius: 28,
@@ -1366,117 +1341,229 @@ export default function HomePage() {
         </Row>
       </section>
 
-      {/* 8. Đánh Giá Khách Hàng (Customer Reviews Social Proof) */}
-      <section style={{ marginBottom: 12 }}>
-        <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 32px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-            ⭐ Đánh Giá Thực Tế
-          </span>
-          <Typography.Title level={3} style={{ color: '#431407', fontWeight: 900, margin: '4px 0 8px' }}>
-            Hơn 15.000+ Tín Đồ Ăn Vặt Tin Yêu
-          </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
-            Cảm nhận thật từ các đơn hàng giao mỗi ngày trên khắp cả nước
-          </Typography.Text>
+      {/* 7. Đánh Giá Khách Hàng (Customer Reviews Social Proof - Real Database Data Carousel) */}
+      <section style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', fontWeight: 800, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>
+              <span style={{ fontSize: 15 }}>⭐</span> Đánh Giá Thực Tế Từ Khách Hàng
+            </div>
+            <Typography.Title level={3} style={{ margin: 0, color: '#431407', fontWeight: 900, letterSpacing: '-0.3px' }}>
+              Cảm Nhận Mới Nhất Về Snack Shop
+            </Typography.Title>
+            <Typography.Text type="secondary" style={{ fontSize: '0.92rem' }}>
+              Lắng nghe trải nghiệm ẩm thực chân thực từ những thực khách đã thưởng thức
+            </Typography.Text>
+          </div>
+
+          {/* Navigation Controls */}
+          {sortedReviews.length > reviewItemsPerView && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button
+                shape="circle"
+                icon={<LeftOutlined style={{ fontSize: 12 }} />}
+                onClick={handleReviewPrev}
+                style={{
+                  width: 36,
+                  height: 36,
+                  border: '1.5px solid #fed7aa',
+                  color: '#9a3412',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                }}
+              />
+              <Button
+                shape="circle"
+                icon={<RightOutlined style={{ fontSize: 12 }} />}
+                onClick={handleReviewNext}
+                style={{
+                  width: 36,
+                  height: 36,
+                  border: '1.5px solid #fed7aa',
+                  color: '#9a3412',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                }}
+              />
+            </div>
+          )}
         </div>
 
-        <Row gutter={[20, 20]}>
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Khô gà thơm mùi lá chanh nức mũi luôn, không bị bở nát như mấy chỗ khác. Hũ bọc seal nhôm chắc chắn, ăn xong đậy nắp vẫn giòn rụm cả tuần."
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#ffedd5', color: '#ea580c', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  HL
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Hoàng Linh</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Nhân viên văn phòng (Hà Nội)</div>
-                </div>
-              </div>
-            </div>
-          </Col>
+        {isLoadingReviews ? (
+          <Row gutter={[16, 16]}>
+            {[1, 2, 3].map((item) => (
+              <Col xs={24} md={8} key={item}>
+                <Card style={{ borderRadius: 20, border: '1px solid #fed7aa80' }}>
+                  <Skeleton active avatar paragraph={{ rows: 3 }} />
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        ) : sortedReviews.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#fff', borderRadius: 20, border: '1px solid #fed7aa80' }}>
+            <Typography.Text type="secondary">Chưa có đánh giá nào gần đây.</Typography.Text>
+          </div>
+        ) : (
+          <div
+            onMouseEnter={() => setIsReviewPaused(true)}
+            onMouseLeave={() => setIsReviewPaused(false)}
+            style={{ position: 'relative' }}
+          >
+            <div style={{ overflow: 'hidden', margin: '0 -8px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  transition: 'transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: `translateX(-${reviewSlideIndex * (100 / reviewItemsPerView)}%)`
+                }}
+              >
+                {sortedReviews.map((rev) => (
+                  <div
+                    key={rev.maDanhGia}
+                    style={{
+                      flex: `0 0 ${100 / reviewItemsPerView}%`,
+                      maxWidth: `${100 / reviewItemsPerView}%`,
+                      padding: '0 8px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: 20,
+                        padding: 22,
+                        border: '1.5px solid #fed7aa60',
+                        boxShadow: '0 6px 18px rgba(234, 88, 12, 0.04)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: 250,
+                        height: '100%',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <div>
+                        {/* Rating & Date */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <Rate
+                            disabled
+                            defaultValue={rev.soSao || 5}
+                            style={{ fontSize: 13, color: '#f59e0b' }}
+                          />
+                          <Tag color="orange" style={{ margin: 0, fontSize: '11px', borderRadius: 6, fontWeight: 700, border: 'none', background: '#ffedd5', color: '#ea580c' }}>
+                            {rev.ngayTao ? formatDate(rev.ngayTao) : 'Mới đây'}
+                          </Tag>
+                        </div>
 
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Bánh tráng phơi sương dẻo quẹo, nước sốt tắc cay xè đậm đà. Đặt 2h là shipper giao tới cửa rồi, cày phim mà có mâm này thì hết nước chấm!"
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  MA
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Minh Anh</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Sinh viên ĐHQG TP.HCM</div>
-                </div>
-              </div>
-            </div>
-          </Col>
+                        {/* Review Content */}
+                        <p
+                          style={{
+                            color: '#334155',
+                            fontSize: '0.9rem',
+                            fontStyle: 'italic',
+                            lineHeight: 1.6,
+                            margin: '0 0 14px',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          "{rev.binhLuan || 'Món ăn vặt rất ngon, giao hàng đóng gói cẩn thận!'}"
+                        </p>
+                      </div>
 
-          <Col xs={24} md={8}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: 20,
-              padding: 24,
-              border: '1px solid #e7e5e4',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%'
-            }}>
-              <div>
-                <div style={{ color: '#f59e0b', fontSize: 14, marginBottom: 10 }}>
-                  ★★★★★
-                </div>
-                <p style={{ color: '#44403c', fontSize: '0.88rem', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                  "Khô bò tẩm gia vị ăn rất cuốn, sợi to đều màu đẹp. Team công ty mình nghiện order ăn vặt chiều thứ sáu, tuần nào cũng đặt cả combo lớn."
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, paddingTop: 14, borderTop: '1px solid #f5f5f4' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 13 }}>
-                  QT
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1c1917' }}>Quốc Tuấn</div>
-                  <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>Team Lead Media (Quận 1, TP.HCM)</div>
-                </div>
+                      <div>
+                        {/* Tagged Product */}
+                        {rev.tenSanPham && (
+                          <Link
+                            to={`/san-pham/${rev.maSanPham}`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              background: '#fff7ed',
+                              padding: '6px 10px',
+                              borderRadius: 10,
+                              marginBottom: 14,
+                              border: '1px dashed #fed7aa',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            {rev.hinhAnhSanPham && (
+                              <img
+                                src={rev.hinhAnhSanPham}
+                                alt={rev.tenSanPham}
+                                style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 6 }}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            )}
+                            <div
+                              style={{
+                                fontSize: '0.8rem',
+                                color: '#9a3412',
+                                fontWeight: 700,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Món: {rev.tenSanPham}
+                            </div>
+                          </Link>
+                        )}
+
+                        {/* Customer Info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                          <Avatar
+                            style={{
+                              backgroundColor: '#ea580c',
+                              color: '#fff',
+                              fontWeight: 800,
+                              fontSize: 13,
+                              flexShrink: 0
+                            }}
+                          >
+                            {(rev.tenKhachHang || 'K')?.[0]?.toUpperCase()}
+                          </Avatar>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {rev.tenKhachHang || 'Khách hàng Snack Shop'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircleOutlined style={{ fontSize: 11 }} /> Đã mua hàng thực tế
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </Col>
-        </Row>
+
+            {/* Slider Dots Indicator */}
+            {reviewMaxIndex > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 18 }}>
+                {Array.from({ length: reviewMaxIndex + 1 }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setReviewSlideIndex(idx)}
+                    style={{
+                      width: reviewSlideIndex === idx ? 22 : 6,
+                      height: 6,
+                      borderRadius: 3,
+                      background: reviewSlideIndex === idx ? '#ea580c' : '#fed7aa',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
     </div>
