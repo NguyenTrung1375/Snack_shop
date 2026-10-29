@@ -26,3 +26,7 @@ yarn-debug.log*
 # Sensitive local files
 *.pem
 *.key
+
+
+stitch_design/
+

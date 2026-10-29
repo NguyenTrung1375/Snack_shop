@@ -23,6 +23,7 @@ import { useAuthStore } from '../shared/auth/authStore';
 import { ROLES, roleLabels } from '../shared/constants/roles';
 import { useCartQuery } from '../features/cart/hooks';
 import { useUnreadCountQuery } from '../features/notifications/hooks';
+import SessionTimerWidget from '../shared/components/SessionTimerWidget';
 
 const { Header, Content, Footer } = Layout;
 
@@ -187,6 +188,7 @@ export default function StoreLayout() {
           items={menuItems}
         />
 
+        {!token && (
         <div className="store-search">
           <Input
             placeholder="Tìm khô gà, bánh tráng, cơm cháy..."
@@ -198,6 +200,7 @@ export default function StoreLayout() {
             }}
           />
         </div>
+        )}
 
         <Space size="middle">
           {role === ROLES.KHACH_HANG && (
@@ -223,6 +226,8 @@ export default function StoreLayout() {
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             />
           </Badge>
+
+          {token && <SessionTimerWidget />}
 
           {token ? (
             <Dropdown menu={accountMenu} placement="bottomRight">

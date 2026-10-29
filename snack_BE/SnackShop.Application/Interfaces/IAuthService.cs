@@ -9,5 +9,6 @@ public interface IAuthService
     Task<UserProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken cancellationToken = default);
     Task<AuthResponse> TaoTaiKhoanAsync(TaoTaiKhoanRequest request, CancellationToken cancellationToken = default);
+    Task<AuthResponse> RefreshSessionAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default);
 }

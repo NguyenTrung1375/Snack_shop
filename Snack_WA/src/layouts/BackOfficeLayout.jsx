@@ -18,6 +18,7 @@ import { Layout, Menu, Typography, Space, Button, Tag, Dropdown } from 'antd';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../shared/auth/authStore';
 import { ROLES, roleLabels } from '../shared/constants/roles';
+import SessionTimerWidget from '../shared/components/SessionTimerWidget';
 
 const { Sider, Content, Header } = Layout;
 
@@ -146,6 +147,8 @@ export default function BackOfficeLayout() {
           </Space>
 
           <Space size="middle">
+            <SessionTimerWidget />
+
             <Link to="/">
               <Button 
                 type="default" 
