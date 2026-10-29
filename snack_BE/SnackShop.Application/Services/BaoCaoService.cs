@@ -1,5 +1,6 @@
+using System.Data;
+using System.Data.Common;
 using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using SnackShop.Application.Common;
 using SnackShop.Application.DTOs.BaoCao;
@@ -18,119 +19,262 @@ public class BaoCaoService : IBaoCaoService
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Helper: Mở kết nối Database ADO.NET thuần túy để thực thi truy vấn SQL trực tiếp
+    /// </summary>
+    private async Task<DbConnection> GetOpenConnectionAsync(CancellationToken cancellationToken)
+    {
+        var conn = _db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open)
+        {
+            await conn.OpenAsync(cancellationToken);
+        }
+        return conn;
+    }
+
+    // =========================================================================
+    // 1. DOANH THU THEO THÁNG (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<List<DoanhThuTheoThangDto>> GetDoanhThuTheoThangAsync(int? nam, CancellationToken cancellationToken = default)
     {
-        var query = _db.DoanhThuTheoThangViews.AsNoTracking();
+        var conn = await GetOpenConnectionAsync(cancellationToken);
+        using var cmd = conn.CreateCommand();
+
+        string sql = @"
+            SELECT 
+                DATE_FORMAT(ngay_tao, '%Y-%m') AS thang,
+                COUNT(0) AS so_don,
+                COALESCE(SUM(tong_tien_thanh_toan), 0) AS doanh_thu
+            FROM don_hang
+            WHERE trang_thai_don_hang = 'da_giao' ";
 
         if (nam.HasValue)
         {
-            var namStr = nam.Value.ToString();
-            query = query.Where(v => v.Thang.StartsWith(namStr));
+            sql += " AND YEAR(ngay_tao) = @nam ";
+            var param = cmd.CreateParameter();
+            param.ParameterName = "@nam";
+            param.Value = nam.Value;
+            cmd.Parameters.Add(param);
         }
 
-        var items = await query
-            .OrderBy(v => v.Thang)
-            .ToListAsync(cancellationToken);
+        sql += " GROUP BY DATE_FORMAT(ngay_tao, '%Y-%m') ORDER BY thang ASC;";
+        cmd.CommandText = sql;
 
-        return _mapper.Map<List<DoanhThuTheoThangDto>>(items);
+        var items = new List<DoanhThuTheoThangDto>();
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new DoanhThuTheoThangDto
+            {
+                Thang = reader.GetString(reader.GetOrdinal("thang")),
+                SoDon = reader.GetInt64(reader.GetOrdinal("so_don")),
+                DoanhThu = reader.GetDecimal(reader.GetOrdinal("doanh_thu"))
+            });
+        }
+
+        return items;
     }
 
+    // =========================================================================
+    // 2. SẢN PHẨM BÁN CHẠY NHẤT (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<PagedResult<SanPhamBanChayDto>> GetSanPhamBanChayAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var pageIndex = page > 0 ? page : 1;
         var size = pageSize > 0 ? pageSize : 20;
+        var offset = (pageIndex - 1) * size;
 
-        var total = await _db.SanPhamBanChayViews.AsNoTracking().CountAsync(cancellationToken);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
 
-        var items = await _db.SanPhamBanChayViews
-            .AsNoTracking()
-            .OrderByDescending(v => v.TongSoLuongBan)
-            .Skip((pageIndex - 1) * size)
-            .Take(size)
-            .ToListAsync(cancellationToken);
+        // SQL đếm tổng số sản phẩm đã phát sinh doanh số
+        using var countCmd = conn.CreateCommand();
+        countCmd.CommandText = @"
+            SELECT COUNT(DISTINCT ct.ma_san_pham) 
+            FROM chi_tiet_don_hang ct
+            INNER JOIN don_hang dh ON dh.ma_don_hang = ct.ma_don_hang
+            WHERE dh.trang_thai_don_hang <> 'da_huy';";
+        var totalObj = await countCmd.ExecuteScalarAsync(cancellationToken);
+        int total = Convert.ToInt32(totalObj ?? 0);
 
-        var dtos = _mapper.Map<List<SanPhamBanChayDto>>(items);
-        return new PagedResult<SanPhamBanChayDto>(dtos, total, pageIndex, size);
+        // SQL phân trang lấy top sản phẩm bán chạy nhất
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"
+            SELECT 
+                sp.ma_san_pham,
+                sp.ten_san_pham,
+                CAST(COALESCE(SUM(ct.so_luong), 0) AS SIGNED) AS tong_so_luong_ban,
+                COALESCE(SUM(ct.thanh_tien), 0) AS tong_doanh_thu
+            FROM chi_tiet_don_hang ct
+            INNER JOIN don_hang dh ON dh.ma_don_hang = ct.ma_don_hang AND dh.trang_thai_don_hang <> 'da_huy'
+            INNER JOIN san_pham sp ON sp.ma_san_pham = ct.ma_san_pham
+            GROUP BY sp.ma_san_pham, sp.ten_san_pham
+            ORDER BY tong_so_luong_ban DESC
+            LIMIT @size OFFSET @offset;";
+
+        var pSize = cmd.CreateParameter();
+        pSize.ParameterName = "@size";
+        pSize.Value = size;
+        cmd.Parameters.Add(pSize);
+
+        var pOffset = cmd.CreateParameter();
+        pOffset.ParameterName = "@offset";
+        pOffset.Value = offset;
+        cmd.Parameters.Add(pOffset);
+
+        var items = new List<SanPhamBanChayDto>();
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            items.Add(new SanPhamBanChayDto
+            {
+                MaSanPham = Guid.Parse(reader.GetString(reader.GetOrdinal("ma_san_pham"))),
+                TenSanPham = reader.GetString(reader.GetOrdinal("ten_san_pham")),
+                TongSoLuongBan = reader.GetInt64(reader.GetOrdinal("tong_so_luong_ban")),
+                TongDoanhThu = reader.GetDecimal(reader.GetOrdinal("tong_doanh_thu"))
+            });
+        }
+
+        return new PagedResult<SanPhamBanChayDto>(items, total, pageIndex, size);
     }
 
-    // ==========================================
-    // 4 DẠNG BÁO CÁO THEO YÊU CẦU GIẢNG VIÊN
-    // ==========================================
-
-    // a) Thống kê tổng tiền Hóa đơn từ ngày a đến ngày b
+    // =========================================================================
+    // 3. THỐNG KÊ TỔNG TIỀN HÓA ĐƠN THEO KHOẢNG NGÀY (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<ThongKeTheoKhoangNgayDto> GetThongKeTheoKhoangNgayAsync(DateTime tuNgay, DateTime denNgay, CancellationToken cancellationToken = default)
     {
         var start = DateTime.SpecifyKind(tuNgay.Date, DateTimeKind.Utc);
         var end = DateTime.SpecifyKind(denNgay.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
 
-        var invoices = await _db.HoaDons
-            .AsNoTracking()
-            .Include(h => h.DonHang).ThenInclude(d => d.KhachHang).ThenInclude(k => k.NguoiDung)
-            .Include(h => h.NhanVien).ThenInclude(nv => nv.NguoiDung)
-            .Where(h => h.NgayXuatHoaDon >= start && h.NgayXuatHoaDon <= end)
-            .OrderByDescending(h => h.NgayXuatHoaDon)
-            .ToListAsync(cancellationToken);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
+        using var cmd = conn.CreateCommand();
 
-        var result = new ThongKeTheoKhoangNgayDto
+        cmd.CommandText = @"
+            SELECT 
+                h.ma_hoa_don,
+                h.so_hoa_don,
+                COALESCE(d.ma_code, 'N/A') AS ma_code_don_hang,
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_kh.ho_lot, ''), ' ', COALESCE(u_kh.ten, ''))), ''), d.ten_nguoi_nhan, 'Khách hàng') AS ten_khach_hang,
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u_nv.ho_lot, ''), ' ', COALESCE(u_nv.ten, ''))), ''), 'Tự động (Hệ thống)') AS ten_nhan_vien,
+                h.tong_tien,
+                h.ngay_xuat_hoa_don
+            FROM hoa_don h
+            INNER JOIN don_hang d ON h.ma_don_hang = d.ma_don_hang
+            LEFT JOIN khach_hang k ON d.ma_khach_hang = k.ma_nguoi_dung
+            LEFT JOIN nguoi_dung u_kh ON k.ma_nguoi_dung = u_kh.ma_nguoi_dung
+            LEFT JOIN nhan_vien nv ON h.ma_nhan_vien = nv.ma_nguoi_dung
+            LEFT JOIN nguoi_dung u_nv ON nv.ma_nguoi_dung = u_nv.ma_nguoi_dung
+            WHERE h.ngay_xuat_hoa_don >= @start AND h.ngay_xuat_hoa_don <= @end
+            ORDER BY h.ngay_xuat_hoa_don DESC;";
+
+        var pStart = cmd.CreateParameter();
+        pStart.ParameterName = "@start";
+        pStart.Value = start;
+        cmd.Parameters.Add(pStart);
+
+        var pEnd = cmd.CreateParameter();
+        pEnd.ParameterName = "@end";
+        pEnd.Value = end;
+        cmd.Parameters.Add(pEnd);
+
+        var list = new List<HoaDonThongKeItemDto>();
+        decimal grandTotal = 0;
+
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var total = reader.GetDecimal(reader.GetOrdinal("tong_tien"));
+            grandTotal += total;
+
+            list.Add(new HoaDonThongKeItemDto
+            {
+                MaHoaDon = Guid.Parse(reader.GetString(reader.GetOrdinal("ma_hoa_don"))),
+                SoHoaDon = reader.GetString(reader.GetOrdinal("so_hoa_don")),
+                MaCodeDonHang = reader.GetString(reader.GetOrdinal("ma_code_don_hang")),
+                TenKhachHang = reader.GetString(reader.GetOrdinal("ten_khach_hang")),
+                TenNhanVien = reader.GetString(reader.GetOrdinal("ten_nhan_vien")),
+                TongTien = total,
+                NgayXuatHoaDon = reader.GetDateTime(reader.GetOrdinal("ngay_xuat_hoa_don"))
+            });
+        }
+
+        return new ThongKeTheoKhoangNgayDto
         {
             TuNgay = start,
             DenNgay = end,
-            TongSoHoaDon = invoices.Count,
-            TongDoanhThu = invoices.Sum(h => h.TongTien),
-            DanhSachHoaDon = invoices.Select(h => new HoaDonThongKeItemDto
-            {
-                MaHoaDon = h.MaHoaDon,
-                SoHoaDon = h.SoHoaDon,
-                MaCodeDonHang = h.DonHang?.MaCode ?? "N/A",
-                TenKhachHang = !string.IsNullOrWhiteSpace(h.DonHang?.TenNguoiNhan) 
-                    ? h.DonHang.TenNguoiNhan 
-                    : (h.DonHang?.KhachHang?.NguoiDung != null 
-                        ? (h.DonHang.KhachHang.NguoiDung.HoLot + " " + h.DonHang.KhachHang.NguoiDung.Ten).Trim() 
-                        : "Khách hàng"),
-                TenNhanVien = h.NhanVien?.NguoiDung != null 
-                    ? (h.NhanVien.NguoiDung.HoLot + " " + h.NhanVien.NguoiDung.Ten).Trim() 
-                    : "Tự động (Hệ thống)",
-                TongTien = h.TongTien,
-                NgayXuatHoaDon = h.NgayXuatHoaDon
-            }).ToList()
+            TongSoHoaDon = list.Count,
+            TongDoanhThu = grandTotal,
+            DanhSachHoaDon = list
         };
-
-        return result;
     }
 
-    // b) Thống kê tổng tiền HĐ theo Tháng / Quý / Năm (Thu HĐ - Chi PNH = Lợi nhuận)
+    // =========================================================================
+    // 4. THỐNG KÊ THU - CHI - LỢI NHUẬN THEO QUÝ & NĂM (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<ThongKeThuChiLoiNhuanDto> GetThuChiLoiNhuanTheoQuyAsync(int nam, CancellationToken cancellationToken = default)
     {
-        var start = new DateTime(nam, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(nam, 12, 31, 23, 59, 59, 999, DateTimeKind.Utc);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
 
-        // 1. Tổng thu từ Hóa đơn (hoặc đơn hàng hoàn thành)
-        var hoaDons = await _db.HoaDons
-            .AsNoTracking()
-            .Where(h => h.NgayXuatHoaDon >= start && h.NgayXuatHoaDon <= end)
-            .Select(h => new { h.NgayXuatHoaDon, h.TongTien })
-            .ToListAsync(cancellationToken);
+        // 1. Câu truy vấn SQL lấy tổng thu Hóa đơn (Thu) theo từng Quý trong năm
+        using var cmdThu = conn.CreateCommand();
+        cmdThu.CommandText = @"
+            SELECT 
+                QUARTER(ngay_xuat_hoa_don) AS quy,
+                COALESCE(SUM(tong_tien), 0) AS tong_thu
+            FROM hoa_don
+            WHERE YEAR(ngay_xuat_hoa_don) = @nam
+            GROUP BY QUARTER(ngay_xuat_hoa_don);";
 
-        decimal thuQ1 = hoaDons.Where(h => h.NgayXuatHoaDon.Month is >= 1 and <= 3).Sum(h => h.TongTien);
-        decimal thuQ2 = hoaDons.Where(h => h.NgayXuatHoaDon.Month is >= 4 and <= 6).Sum(h => h.TongTien);
-        decimal thuQ3 = hoaDons.Where(h => h.NgayXuatHoaDon.Month is >= 7 and <= 9).Sum(h => h.TongTien);
-        decimal thuQ4 = hoaDons.Where(h => h.NgayXuatHoaDon.Month is >= 10 and <= 12).Sum(h => h.TongTien);
+        var pNamThu = cmdThu.CreateParameter();
+        pNamThu.ParameterName = "@nam";
+        pNamThu.Value = nam;
+        cmdThu.Parameters.Add(pNamThu);
+
+        decimal thuQ1 = 0, thuQ2 = 0, thuQ3 = 0, thuQ4 = 0;
+        using (var readerThu = await cmdThu.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await readerThu.ReadAsync(cancellationToken))
+            {
+                int q = readerThu.GetInt32(readerThu.GetOrdinal("quy"));
+                decimal val = readerThu.GetDecimal(readerThu.GetOrdinal("tong_thu"));
+                if (q == 1) thuQ1 = val;
+                else if (q == 2) thuQ2 = val;
+                else if (q == 3) thuQ3 = val;
+                else if (q == 4) thuQ4 = val;
+            }
+        }
         decimal thuTC = thuQ1 + thuQ2 + thuQ3 + thuQ4;
 
-        // 2. Tổng chi từ Đơn nhập hàng (Phiếu nhập hàng - PNH)
-        var donNhaps = await _db.DonNhapHangs
-            .AsNoTracking()
-            .Where(d => (d.NgayNhapKho ?? d.NgayTao) >= start && (d.NgayNhapKho ?? d.NgayTao) <= end)
-            .Select(d => new { Ngay = d.NgayNhapKho ?? d.NgayTao, d.TongTien })
-            .ToListAsync(cancellationToken);
+        // 2. Câu truy vấn SQL lấy tổng chi Phiếu nhập hàng (Chi) theo từng Quý trong năm
+        using var cmdChi = conn.CreateCommand();
+        cmdChi.CommandText = @"
+            SELECT 
+                QUARTER(COALESCE(ngay_nhap_kho, ngay_tao)) AS quy,
+                COALESCE(SUM(tong_tien), 0) AS tong_chi
+            FROM don_nhap_hang
+            WHERE YEAR(COALESCE(ngay_nhap_kho, ngay_tao)) = @nam
+            GROUP BY QUARTER(COALESCE(ngay_nhap_kho, ngay_tao));";
 
-        decimal chiQ1 = donNhaps.Where(d => d.Ngay.Month is >= 1 and <= 3).Sum(d => d.TongTien);
-        decimal chiQ2 = donNhaps.Where(d => d.Ngay.Month is >= 4 and <= 6).Sum(d => d.TongTien);
-        decimal chiQ3 = donNhaps.Where(d => d.Ngay.Month is >= 7 and <= 9).Sum(d => d.TongTien);
-        decimal chiQ4 = donNhaps.Where(d => d.Ngay.Month is >= 10 and <= 12).Sum(d => d.TongTien);
+        var pNamChi = cmdChi.CreateParameter();
+        pNamChi.ParameterName = "@nam";
+        pNamChi.Value = nam;
+        cmdChi.Parameters.Add(pNamChi);
+
+        decimal chiQ1 = 0, chiQ2 = 0, chiQ3 = 0, chiQ4 = 0;
+        using (var readerChi = await cmdChi.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await readerChi.ReadAsync(cancellationToken))
+            {
+                int q = readerChi.GetInt32(readerChi.GetOrdinal("quy"));
+                decimal val = readerChi.GetDecimal(readerChi.GetOrdinal("tong_chi"));
+                if (q == 1) chiQ1 = val;
+                else if (q == 2) chiQ2 = val;
+                else if (q == 3) chiQ3 = val;
+                else if (q == 4) chiQ4 = val;
+            }
+        }
         decimal chiTC = chiQ1 + chiQ2 + chiQ3 + chiQ4;
 
-        var result = new ThongKeThuChiLoiNhuanDto
+        return new ThongKeThuChiLoiNhuanDto
         {
             Nam = nam,
             Rows = new List<ChiTieuThuChiRowDto>
@@ -167,61 +311,73 @@ public class BaoCaoService : IBaoCaoService
                 }
             }
         };
-
-        return result;
     }
 
-    // c) Thống kê tổng tiền HĐ theo Nhân viên và năm
+    // =========================================================================
+    // 5. THỐNG KÊ DOANH THU THEO NHÂN VIÊN QUA CÁC NĂM (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<ThongKeDoiTuongTheoNamDto> GetDoanhThuTheoNhanVienAsync(List<int>? danhSachNam = null, CancellationToken cancellationToken = default)
     {
         var years = danhSachNam is { Count: > 0 } ? danhSachNam : new List<int> { 2024, 2025, 2026 };
         years.Sort();
 
-        var nhanViens = await _db.NhanViens
-            .AsNoTracking()
-            .Include(nv => nv.NguoiDung)
-            .ToListAsync(cancellationToken);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
+        using var cmd = conn.CreateCommand();
 
-        var hoaDons = await _db.HoaDons
-            .AsNoTracking()
-            .Where(h => h.MaNhanVien.HasValue)
-            .Select(h => new { h.MaNhanVien, h.NgayXuatHoaDon.Year, h.TongTien })
-            .ToListAsync(cancellationToken);
+        cmd.CommandText = @"
+            SELECT 
+                nv.ma_nguoi_dung AS ma_nhan_vien,
+                TRIM(CONCAT(COALESCE(u.ho_lot, ''), ' ', COALESCE(u.ten, ''))) AS ten_nhan_vien,
+                YEAR(h.ngay_xuat_hoa_don) AS nam,
+                COALESCE(SUM(h.tong_tien), 0) AS doanh_thu
+            FROM nhan_vien nv
+            INNER JOIN nguoi_dung u ON nv.ma_nguoi_dung = u.ma_nguoi_dung
+            LEFT JOIN hoa_don h ON nv.ma_nguoi_dung = h.ma_nhan_vien
+            GROUP BY nv.ma_nguoi_dung, u.ho_lot, u.ten, YEAR(h.ngay_xuat_hoa_don);";
 
-        var rows = new List<DoiTuongDoanhThuRowDto>();
-        int index = 1;
+        var tempRows = new Dictionary<string, (string Ten, Dictionary<string, decimal> TheoNam)>();
 
-        foreach (var nv in nhanViens)
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            var row = new DoiTuongDoanhThuRowDto
-            {
-                MaDoiTuong = nv.MaNguoiDung,
-                TenDoiTuong = nv.NguoiDung != null 
-                    ? (nv.NguoiDung.HoLot + " " + nv.NguoiDung.Ten).Trim() 
-                    : $"Nhân viên {index}",
-                DoanhThuTheoNam = new Dictionary<string, decimal>()
-            };
+            string maNv = reader.GetString(reader.GetOrdinal("ma_nhan_vien"));
+            string tenNv = reader.GetString(reader.GetOrdinal("ten_nhan_vien"));
+            int? nam = reader.IsDBNull(reader.GetOrdinal("nam")) ? null : reader.GetInt32(reader.GetOrdinal("nam"));
+            decimal rev = reader.GetDecimal(reader.GetOrdinal("doanh_thu"));
 
-            decimal total = 0;
-            foreach (var y in years)
+            if (!tempRows.ContainsKey(maNv))
             {
-                decimal sum = hoaDons.Where(h => h.MaNhanVien == nv.MaNguoiDung && h.Year == y).Sum(h => h.TongTien);
-                row.DoanhThuTheoNam[y.ToString()] = sum;
-                total += sum;
+                tempRows[maNv] = (tenNv, new Dictionary<string, decimal>());
+                foreach (var y in years) tempRows[maNv].TheoNam[y.ToString()] = 0;
             }
-            row.TongCong = total;
-            rows.Add(row);
-            index++;
+
+            if (nam.HasValue && tempRows[maNv].TheoNam.ContainsKey(nam.Value.ToString()))
+            {
+                tempRows[maNv].TheoNam[nam.Value.ToString()] = rev;
+            }
         }
 
-        // Sắp xếp nhân viên theo tổng doanh thu giảm dần và đánh số tuần tự NV01, NV02,...
+        var rows = new List<DoiTuongDoanhThuRowDto>();
+        foreach (var kvp in tempRows)
+        {
+            decimal total = kvp.Value.TheoNam.Values.Sum();
+            rows.Add(new DoiTuongDoanhThuRowDto
+            {
+                MaDoiTuong = Guid.Parse(kvp.Key),
+                TenDoiTuong = kvp.Value.Ten,
+                DoanhThuTheoNam = kvp.Value.TheoNam,
+                TongCong = total
+            });
+        }
+
+        // Sắp xếp doanh thu giảm dần và đánh số tuần tự NV01, NV02,...
         rows = rows.OrderByDescending(r => r.TongCong).ToList();
         for (int i = 0; i < rows.Count; i++)
         {
             rows[i].MaDinhDanh = $"NV{(i + 1):D2}";
         }
 
-        // Tính hàng Tổng cộng (TC)
+        // Dòng Tổng cộng toàn bộ (TC)
         var tcRow = new DoiTuongDoanhThuRowDto
         {
             MaDoiTuong = Guid.Empty,
@@ -247,71 +403,73 @@ public class BaoCaoService : IBaoCaoService
         };
     }
 
-    // c2) Thống kê tổng tiền HĐ theo Khách hàng và năm (Group 100% theo ID duy nhất, lấy tên mới nhất)
+    // =========================================================================
+    // 6. THỐNG KÊ DOANH THU THEO KHÁCH HÀNG QUA CÁC NĂM (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<ThongKeDoiTuongTheoNamDto> GetDoanhThuTheoKhachHangAsync(List<int>? danhSachNam = null, CancellationToken cancellationToken = default)
     {
         var years = danhSachNam is { Count: > 0 } ? danhSachNam : new List<int> { 2024, 2025, 2026 };
         years.Sort();
 
-        var hoaDons = await _db.HoaDons
-            .AsNoTracking()
-            .Include(h => h.DonHang).ThenInclude(d => d.KhachHang).ThenInclude(k => k.NguoiDung)
-            .Select(h => new
-            {
-                MaKhachHang = h.DonHang.MaKhachHang,
-                TenNguoiNhan = h.DonHang.TenNguoiNhan,
-                HoLot = h.DonHang.KhachHang != null && h.DonHang.KhachHang.NguoiDung != null ? h.DonHang.KhachHang.NguoiDung.HoLot : "",
-                Ten = h.DonHang.KhachHang != null && h.DonHang.KhachHang.NguoiDung != null ? h.DonHang.KhachHang.NguoiDung.Ten : "",
-                NgayXuatHoaDon = h.NgayXuatHoaDon,
-                Year = h.NgayXuatHoaDon.Year,
-                TongTien = h.TongTien
-            })
-            .ToListAsync(cancellationToken);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
+        using var cmd = conn.CreateCommand();
 
-        // Group DUY NHẤT theo MaKhachHang để triệt tiêu hoàn toàn trùng lặp
-        var customerGroups = hoaDons
-            .GroupBy(h => h.MaKhachHang)
-            .ToList();
+        // SQL: Gom theo đúng ID khách hàng (d.ma_khach_hang) và lấy tên mới nhất
+        cmd.CommandText = @"
+            SELECT 
+                d.ma_khach_hang,
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.ho_lot, ''), ' ', COALESCE(u.ten, ''))), ''), d.ten_nguoi_nhan, 'Khách hàng') AS ten_khach_hang,
+                YEAR(h.ngay_xuat_hoa_don) AS nam,
+                COALESCE(SUM(h.tong_tien), 0) AS doanh_thu
+            FROM hoa_don h
+            INNER JOIN don_hang d ON h.ma_don_hang = d.ma_don_hang
+            LEFT JOIN khach_hang k ON d.ma_khach_hang = k.ma_nguoi_dung
+            LEFT JOIN nguoi_dung u ON k.ma_nguoi_dung = u.ma_nguoi_dung
+            GROUP BY d.ma_khach_hang, u.ho_lot, u.ten, d.ten_nguoi_nhan, YEAR(h.ngay_xuat_hoa_don);";
 
-        var rows = new List<DoiTuongDoanhThuRowDto>();
+        var tempRows = new Dictionary<string, (string Ten, Dictionary<string, decimal> TheoNam)>();
 
-        foreach (var grp in customerGroups)
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            // Lấy thông tin từ đơn hàng/hóa đơn mới nhất của khách
-            var latestOrder = grp.OrderByDescending(h => h.NgayXuatHoaDon).First();
-            string tenChinhThuc = $"{latestOrder.HoLot} {latestOrder.Ten}".Trim();
-            string tenHienThi = !string.IsNullOrWhiteSpace(tenChinhThuc)
-                ? tenChinhThuc
-                : (!string.IsNullOrWhiteSpace(latestOrder.TenNguoiNhan) ? latestOrder.TenNguoiNhan : "Khách hàng");
+            string maKh = reader.GetString(reader.GetOrdinal("ma_khach_hang"));
+            string tenKh = reader.GetString(reader.GetOrdinal("ten_khach_hang"));
+            int nam = reader.GetInt32(reader.GetOrdinal("nam"));
+            decimal rev = reader.GetDecimal(reader.GetOrdinal("doanh_thu"));
 
-            var row = new DoiTuongDoanhThuRowDto
+            if (!tempRows.ContainsKey(maKh))
             {
-                MaDoiTuong = grp.Key,
-                TenDoiTuong = tenHienThi,
-                DoanhThuTheoNam = new Dictionary<string, decimal>()
-            };
-
-            decimal total = 0;
-            foreach (var y in years)
-            {
-                decimal sum = grp.Where(h => h.Year == y).Sum(h => h.TongTien);
-                row.DoanhThuTheoNam[y.ToString()] = sum;
-                total += sum;
+                tempRows[maKh] = (tenKh, new Dictionary<string, decimal>());
+                foreach (var y in years) tempRows[maKh].TheoNam[y.ToString()] = 0;
             }
-            row.TongCong = total;
-            rows.Add(row);
+
+            if (tempRows[maKh].TheoNam.ContainsKey(nam.ToString()))
+            {
+                tempRows[maKh].TheoNam[nam.ToString()] = rev;
+            }
         }
 
-        // Sắp xếp theo tổng chi tiêu giảm dần
-        rows = rows.OrderByDescending(r => r.TongCong).ToList();
+        var rows = new List<DoiTuongDoanhThuRowDto>();
+        foreach (var kvp in tempRows)
+        {
+            decimal total = kvp.Value.TheoNam.Values.Sum();
+            rows.Add(new DoiTuongDoanhThuRowDto
+            {
+                MaDoiTuong = Guid.Parse(kvp.Key),
+                TenDoiTuong = kvp.Value.Ten,
+                DoanhThuTheoNam = kvp.Value.TheoNam,
+                TongCong = total
+            });
+        }
 
-        // Gán mã KH01, KH02, KH03... tuần tự theo thứ tự sau khi sắp xếp
+        // Sắp xếp chi tiêu giảm dần và gán mã KH01, KH02,...
+        rows = rows.OrderByDescending(r => r.TongCong).ToList();
         for (int i = 0; i < rows.Count; i++)
         {
             rows[i].MaDinhDanh = $"KH{(i + 1):D2}";
         }
 
-        // Tính hàng Tổng cộng (TC)
+        // Dòng Tổng cộng toàn bộ (TC)
         var tcRow = new DoiTuongDoanhThuRowDto
         {
             MaDoiTuong = Guid.Empty,
@@ -337,59 +495,77 @@ public class BaoCaoService : IBaoCaoService
         };
     }
 
-    // d) Thống kê tổng tiền HĐ theo Sản phẩm & Quý - năm
+    // =========================================================================
+    // 7. THỐNG KÊ DOANH THU SẢN PHẨM THEO QUÝ (TRUY VẤN SQL THUẦN TÚY)
+    // =========================================================================
     public async Task<ThongKeSanPhamTheoQuyDto> GetDoanhThuSanPhamTheoQuyAsync(int nam, CancellationToken cancellationToken = default)
     {
-        var start = new DateTime(nam, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var end = new DateTime(nam, 12, 31, 23, 59, 59, 999, DateTimeKind.Utc);
+        var conn = await GetOpenConnectionAsync(cancellationToken);
+        using var cmd = conn.CreateCommand();
 
-        // Lấy chi tiết đơn hàng gắn với hóa đơn trong năm
-        var items = await _db.ChiTietDonHangs
-            .AsNoTracking()
-            .Include(ct => ct.DonHang).ThenInclude(d => d.HoaDon)
-            .Include(ct => ct.SanPham)
-            .Where(ct => ct.DonHang.HoaDon != null && 
-                         ct.DonHang.HoaDon.NgayXuatHoaDon >= start && 
-                         ct.DonHang.HoaDon.NgayXuatHoaDon <= end)
-            .Select(ct => new
+        // SQL: Gom doanh thu từng món ăn vặt theo từng Quý trong năm
+        cmd.CommandText = @"
+            SELECT 
+                sp.ma_san_pham,
+                sp.ten_san_pham,
+                QUARTER(h.ngay_xuat_hoa_don) AS quy,
+                COALESCE(SUM(ct.thanh_tien), 0) AS doanh_thu
+            FROM chi_tiet_don_hang ct
+            INNER JOIN don_hang d ON ct.ma_don_hang = d.ma_don_hang
+            INNER JOIN hoa_don h ON d.ma_don_hang = h.ma_don_hang
+            INNER JOIN san_pham sp ON ct.ma_san_pham = sp.ma_san_pham
+            WHERE YEAR(h.ngay_xuat_hoa_don) = @nam
+            GROUP BY sp.ma_san_pham, sp.ten_san_pham, QUARTER(h.ngay_xuat_hoa_don)
+            ORDER BY sp.ten_san_pham ASC;";
+
+        var pNam = cmd.CreateParameter();
+        pNam.ParameterName = "@nam";
+        pNam.Value = nam;
+        cmd.Parameters.Add(pNam);
+
+        var tempDict = new Dictionary<string, (string Ten, decimal Q1, decimal Q2, decimal Q3, decimal Q4)>();
+
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            string maSp = reader.GetString(reader.GetOrdinal("ma_san_pham"));
+            string tenSp = reader.GetString(reader.GetOrdinal("ten_san_pham"));
+            int quy = reader.GetInt32(reader.GetOrdinal("quy"));
+            decimal rev = reader.GetDecimal(reader.GetOrdinal("doanh_thu"));
+
+            if (!tempDict.ContainsKey(maSp))
             {
-                ct.MaSanPham,
-                TenSanPham = ct.SanPham.TenSanPham,
-                ct.ThanhTien,
-                Thang = ct.DonHang.HoaDon!.NgayXuatHoaDon.Month
-            })
-            .ToListAsync(cancellationToken);
+                tempDict[maSp] = (tenSp, 0, 0, 0, 0);
+            }
 
-        var productGroups = items
-            .GroupBy(i => new { i.MaSanPham, i.TenSanPham })
-            .ToList();
+            var curr = tempDict[maSp];
+            if (quy == 1) curr.Q1 = rev;
+            else if (quy == 2) curr.Q2 = rev;
+            else if (quy == 3) curr.Q3 = rev;
+            else if (quy == 4) curr.Q4 = rev;
+            tempDict[maSp] = curr;
+        }
 
         var rows = new List<SanPhamQuyRowDto>();
-
-        foreach (var grp in productGroups)
+        foreach (var kvp in tempDict)
         {
-            decimal q1 = grp.Where(i => i.Thang is >= 1 and <= 3).Sum(i => i.ThanhTien);
-            decimal q2 = grp.Where(i => i.Thang is >= 4 and <= 6).Sum(i => i.ThanhTien);
-            decimal q3 = grp.Where(i => i.Thang is >= 7 and <= 9).Sum(i => i.ThanhTien);
-            decimal q4 = grp.Where(i => i.Thang is >= 10 and <= 12).Sum(i => i.ThanhTien);
-            decimal tc = q1 + q2 + q3 + q4;
-
+            decimal total = kvp.Value.Q1 + kvp.Value.Q2 + kvp.Value.Q3 + kvp.Value.Q4;
             rows.Add(new SanPhamQuyRowDto
             {
-                MaSanPham = grp.Key.MaSanPham,
-                TenSanPham = grp.Key.TenSanPham,
-                Q1 = q1,
-                Q2 = q2,
-                Q3 = q3,
-                Q4 = q4,
-                TongCong = tc
+                MaSanPham = Guid.Parse(kvp.Key),
+                TenSanPham = kvp.Value.Ten,
+                Q1 = kvp.Value.Q1,
+                Q2 = kvp.Value.Q2,
+                Q3 = kvp.Value.Q3,
+                Q4 = kvp.Value.Q4,
+                TongCong = total
             });
         }
 
-        // Sắp xếp sản phẩm doanh thu cao lên trước
+        // Sắp xếp món có doanh thu cao lên trước
         rows = rows.OrderByDescending(r => r.TongCong).ToList();
 
-        // Tính hàng Tổng cộng (TC)
+        // Dòng Tổng cộng toàn bộ (TC)
         var tcRow = new SanPhamQuyRowDto
         {
             MaSanPham = null,
