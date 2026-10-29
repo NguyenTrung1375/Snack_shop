@@ -49,12 +49,12 @@ export default function ProductsScreen({ navigation, route }) {
   const formatVnd = (val) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       const [prodsRes, catsRes] = await Promise.all([
-        getProducts({ pageSize: 100 }),
-        getCategories().catch(() => []),
+        getProducts({ pageSize: 100 }, forceRefresh),
+        getCategories(forceRefresh).catch(() => []),
       ]);
 
       const items = Array.isArray(prodsRes) ? prodsRes : (prodsRes?.items || []);
@@ -94,7 +94,7 @@ export default function ProductsScreen({ navigation, route }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    loadData(true);
   };
 
   const toggleFavorite = (id) => {

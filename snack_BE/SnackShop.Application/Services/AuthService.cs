@@ -209,6 +209,29 @@ public class AuthService : IAuthService
         return response;
     }
 
+    public async Task<AuthResponse> RefreshSessionAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _db.NguoiDungs
+            .FirstOrDefaultAsync(u => u.MaNguoiDung == userId, cancellationToken);
+
+        if (user == null)
+        {
+            throw new AppException("Không tìm thấy người dùng để làm mới phiên làm việc.", 404);
+        }
+
+        if (user.TrangThai == TrangThaiNguoiDung.NgungHoatDong)
+        {
+            throw new AppException("Tài khoản đã bị ngừng hoạt động, không thể duy trì phiên làm việc.", 401);
+        }
+
+        var roleSnakeCase = user.VaiTro.ToSnakeCase();
+        var token = _jwtTokenService.GenerateToken(user.MaNguoiDung, user.Email, roleSnakeCase);
+
+        var response = _mapper.Map<AuthResponse>(user);
+        response.Token = token;
+        return response;
+    }
+
     public async Task<UserProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _db.NguoiDungs

@@ -63,6 +63,20 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Gia hạn / làm mới phiên làm việc 15 phút
+    /// </summary>
+    [Authorize]
+    [HttpPost("refresh-session")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RefreshSession(CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _authService.RefreshSessionAsync(userId, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Cập nhật thông tin hồ sơ
     /// </summary>
     [Authorize]

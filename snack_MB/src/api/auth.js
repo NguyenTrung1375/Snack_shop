@@ -25,3 +25,8 @@ export const changePassword = async (payload) => {
   return response.data;
 };
 
+export const refreshSession = async () => {
+  const response = await apiClient.post('/auth/refresh-session');
+  return response.data;
+};
+

@@ -3,6 +3,7 @@ import { UserOutlined, ShopOutlined, LogoutOutlined } from '@ant-design/icons';
 import { Layout, Menu, Typography, Space, Button, Tag, Dropdown } from 'antd';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../shared/auth/authStore';
+import SessionTimerWidget from '../shared/components/SessionTimerWidget';
 
 const { Sider, Content, Header } = Layout;
 
@@ -73,6 +74,7 @@ export default function AdminLayout() {
           </Space>
 
           <Space size="middle">
+            <SessionTimerWidget />
             <Dropdown menu={userMenu} placement="bottomRight">
               <Button 
                 type="text" 
