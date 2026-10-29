@@ -19,10 +19,14 @@ import {
   RightOutlined
 } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../shared/auth/authStore';
 import { useProductsQuery, useCategories } from '../../features/catalog/hooks';
 import { formatVnd } from '../../shared/utils/formatters';
+import { SNACK_COMBOS } from '../../shared/constants/snackCombos';
+import { useComboCartStore } from '../../features/cart/comboCartStore';
+import { addToCart } from '../../features/cart/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 const fallbackSnackCategories = [
   { name: 'Khô gà lá chanh', emoji: '🍗', tag: 'Bán chạy nhất' },
@@ -52,152 +56,43 @@ const flattenCategoryTree = (nodes = [], depth = 0) => {
   return result;
 };
 
-// 7 Set combo ăn vặt chuẩn vị mix từ các món thật trong shop (Khô gà, Khô bò, Bánh tráng, Cơm cháy, Da heo...)
-const SNACK_COMBOS = [
-  {
-    id: 'combo-1',
-    name: 'Set Cày Phim Thâu Đêm',
-    subtitle: 'Dành cho 2 - 3 người',
-    tag: '🏆 BÁN CHẠY NHẤT',
-    tagBg: '#ea580c',
-    emoji: '🎬🍿',
-    items: [
-      { name: '1 Hũ Khô gà lá chanh thơm lừng', spec: 'Hũ 200g' },
-      { name: '2 Bịch Bánh tráng sa tế cay xé lưỡi', spec: '2 x 49g' },
-      { name: '1 Gói Rong biển sấy giòn ngũ vị', spec: 'Giòn tan' },
-      { name: '1 Bịch Bánh tráng phơi sương muối tép', spec: 'Tây Ninh' }
-    ],
-    originalPrice: 185000,
-    comboPrice: 149000,
-    discountPct: 20,
-    savingsText: 'Tiết kiệm 36.000đ',
-    link: '/san-pham?q=khô%20gà',
-    isHot: true
-  },
-  {
-    id: 'combo-2',
-    name: 'Set Văn Phòng Siêu Cay Bốc',
-    subtitle: 'Dành cho 4 - 6 người',
-    tag: '🔥 SIÊU CAY BỐC',
-    tagBg: '#dc2626',
-    emoji: '💼🌶️',
-    items: [
-      { name: '2 Hũ Khô gà bơ tỏi giòn rụm', spec: '2 x 100g' },
-      { name: '2 Bịch Bánh tráng phơi sương chấm tắc', spec: 'Cay nồng' },
-      { name: '1 Hũ Khô bò tẩm vị Tây Bắc', spec: 'Hũ 50g' },
-      { name: '1 Hũ Da heo lắc mắm hành giòn rụm', spec: 'Hũ 200g' }
-    ],
-    originalPrice: 260000,
-    comboPrice: 219000,
-    discountPct: 16,
-    savingsText: 'Tiết kiệm 41.000đ',
-    link: '/san-pham?q=da%20heo',
-    isHot: true
-  },
-  {
-    id: 'combo-3',
-    name: 'Set Giòn Tan Tuổi Thơ',
-    subtitle: 'Thưởng thức trọn vẹn (2 - 3 người)',
-    tag: '✨ TUỔI THƠ GẦN GŨI',
-    tagBg: '#d97706',
-    emoji: '🎈🍘',
-    items: [
-      { name: '1 Bịch Cơm cháy chà bông đáy nồi', spec: '250g giòn rụm' },
-      { name: '1 Hũ Khô gà rong biển ngũ vị', spec: 'Hũ đậm vị' },
-      { name: '2 Set Bánh tráng phô mai béo thơm', spec: '2 x 50g' },
-      { name: '1 Set Bánh tráng cuộn muối tép', spec: '50g' }
-    ],
-    originalPrice: 165000,
-    comboPrice: 129000,
-    discountPct: 22,
-    savingsText: 'Tiết kiệm 36.000đ',
-    link: '/san-pham?q=cơm%20cháy',
-    isHot: false
-  },
-  {
-    id: 'combo-4',
-    name: 'Set Đại Tiệc Da Heo & Cơm Cháy',
-    subtitle: 'Dành cho 3 - 5 người',
-    tag: '🥓 GIÒN RỤM TỘT ĐỈNH',
-    tagBg: '#b45309',
-    emoji: '🥓🤤',
-    items: [
-      { name: '1 Hũ Da heo lắc tỏi ớt cay tê', spec: 'Hũ 200g' },
-      { name: '1 Hũ Da heo lắc phô mai béo ngậy', spec: 'Hũ 200g' },
-      { name: '1 Gói Cơm cháy gạo lứt rong biển', spec: 'Gói 250g' },
-      { name: '1 Gói Cơm cháy mắm hành giòn tan', spec: 'Gói 250g' }
-    ],
-    originalPrice: 285000,
-    comboPrice: 235000,
-    discountPct: 18,
-    savingsText: 'Tiết kiệm 50.000đ',
-    link: '/san-pham?q=da%20heo',
-    isHot: false
-  },
-  {
-    id: 'combo-5',
-    name: 'Set Bánh Tráng Gây Nghiện Tây Ninh',
-    subtitle: 'Dành cho 2 - 4 tín đồ bánh tráng',
-    tag: '🌯 TRÙM BÁNH TRÁNG',
-    tagBg: '#059669',
-    emoji: '🌯🌶️',
-    items: [
-      { name: '1 Set Bánh tráng cuốn bơ siêu béo', spec: 'Đầy đủ bơ tép' },
-      { name: '1 Bánh tráng phơi sương muối hành phi', spec: 'Dẻo mềm 50g' },
-      { name: '1 Bánh tráng rong biển cháy tỏi', spec: 'Gói 50g' },
-      { name: '1 Bánh tráng cuộn muối tép Tây Ninh', spec: 'Gói 50g' }
-    ],
-    originalPrice: 145000,
-    comboPrice: 115000,
-    discountPct: 21,
-    savingsText: 'Tiết kiệm 30.000đ',
-    link: '/san-pham?q=bánh%20tráng',
-    isHot: false
-  },
-  {
-    id: 'combo-6',
-    name: 'Set Lai Rai Mồi Bén Cực Đã',
-    subtitle: 'Dành cho 3 - 6 người tụ tập',
-    tag: '🍻 MỒI BÉN LAI RAI',
-    tagBg: '#7c3aed',
-    emoji: '🍻🥩',
-    items: [
-      { name: '1 Hũ Khô heo miếng thượng hạng', spec: 'Hũ 200g' },
-      { name: '1 Gói Khô heo cháy tỏi thơm bùi', spec: 'Gói 50g' },
-      { name: '1 Hũ Khô bò viên cay tê', spec: 'Hũ 50g' },
-      { name: '1 Gói Khô heo cay Tứ Xuyên', spec: 'Gói 25g' }
-    ],
-    originalPrice: 250000,
-    comboPrice: 199000,
-    discountPct: 20,
-    savingsText: 'Tiết kiệm 51.000đ',
-    link: '/san-pham?q=khô%20heo',
-    isHot: false
-  },
-  {
-    id: 'combo-7',
-    name: 'Set Thập Cẩm Ăn Vặt All-In-One',
-    subtitle: 'Đại tiệc nhóm 5 - 8 người',
-    tag: '👑 ĐẠI TIỆC FULL TOPPING',
-    tagBg: '#0284c7',
-    emoji: '👑🎉',
-    items: [
-      { name: '1 Hũ Khô gà cháy tỏi đặc biệt', spec: 'Hũ lớn giòn rụm' },
-      { name: '1 Hũ Khô heo sấy cay đậm đà', spec: 'Hũ 200g' },
-      { name: '1 Hũ Da heo lắc mắm hành', spec: 'Hũ 200g' },
-      { name: '1 Gói Cơm cháy mắm hành đáy nồi', spec: 'Gói 250g' },
-      { name: '2 Bịch Bánh tráng sa tế cay xé', spec: '2 x 49g' }
-    ],
-    originalPrice: 340000,
-    comboPrice: 279000,
-    discountPct: 18,
-    savingsText: 'Tiết kiệm 61.000đ',
-    link: '/san-pham',
-    isHot: true
-  }
-];
+// 20 Set combo ăn vặt chuẩn vị được import trực tiếp từ shared/constants/snackCombos.js đồng bộ 1:1 với trang /combo và mobile app
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const token = useAuthStore((state) => state.token);
+  const addComboVoucher = useComboCartStore((state) => state.addComboVoucher);
+  const [addingComboId, setAddingComboId] = useState(null);
+
+  const handleQuickAddCombo = async (combo, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+
+    if (!token) {
+      message.warning('Vui lòng đăng nhập để thêm combo vào giỏ hàng');
+      navigate('/dang-nhap');
+      return;
+    }
+
+    try {
+      setAddingComboId(combo.id);
+      for (const item of combo.items) {
+        await addToCart({
+          maSanPham: item.maSanPham,
+          soLuong: item.soLuong || 1,
+        });
+      }
+      addComboVoucher(combo);
+      await queryClient.invalidateQueries({ queryKey: ['cart'] });
+      message.success(`Đã thêm trọn bộ "${combo.name}" vào giỏ hàng! Tiết kiệm ${formatVnd(combo.savedAmount || 0)}.`);
+    } catch (err) {
+      message.error(err.response?.data?.message || 'Không thể thêm combo lúc này');
+    } finally {
+      setAddingComboId(null);
+    }
+  };
+
   const role = useAuthStore((state) => state.user?.vaiTro || state.user?.role);
   const { data, isLoading } = useProductsQuery({ page: 1, pageSize: 12, sapXep: 'ban_chay' });
   const { data: rawCategories = [] } = useCategories();
@@ -998,138 +893,165 @@ export default function HomePage() {
               >
                 <div style={{
                   background: '#ffffff',
-                  borderRadius: 24,
-                  padding: '24px 20px',
-                  border: combo.isHot ? '2px solid #ea580c' : '1.5px solid #fed7aa',
-                  boxShadow: combo.isHot ? '0 12px 30px rgba(234, 88, 12, 0.12)' : '0 6px 20px rgba(0,0,0,0.04)',
+                  borderRadius: 22,
+                  overflow: 'hidden',
+                  border: combo.badge === 'BÁN CHẠY' || combo.discountPercent >= 20 ? '2px solid #ea580c' : '1.5px solid #fed7aa',
+                  boxShadow: '0 8px 24px rgba(234, 88, 12, 0.08)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   height: '100%',
                   position: 'relative'
                 }}>
-                  {combo.isHot && (
-                    <div style={{
+                  {/* Cover image with Badges */}
+                  <div style={{ position: 'relative', paddingTop: '62%', background: '#fff7ed', overflow: 'hidden' }}>
+                    <Link to={`/combo/${combo.id}`}>
+                      <img
+                        src={combo.image}
+                        alt={combo.name}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.35s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.06)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                        onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                      />
+                    </Link>
+
+                    <span style={{
                       position: 'absolute',
-                      top: -12,
-                      left: 20,
-                      background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+                      top: 10,
+                      left: 10,
+                      background: combo.badgeColor || '#ea580c',
                       color: '#ffffff',
-                      fontSize: '10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '3px 10px',
+                      borderRadius: 14,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}>
+                      {combo.badge}
+                    </span>
+
+                    <span style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      background: '#dc2626',
+                      color: '#ffffff',
                       fontWeight: 900,
-                      padding: '3px 12px',
-                      borderRadius: 20,
-                      letterSpacing: '0.5px',
-                      boxShadow: '0 4px 10px rgba(234, 88, 12, 0.3)'
+                      fontSize: '11px',
+                      padding: '3px 8px',
+                      borderRadius: 12,
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
                     }}>
-                      ⭐ HOT DEAL ĐƯỢC CHỌN NHIỀU
-                    </div>
-                  )}
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: combo.isHot ? 4 : 0 }}>
-                      <span style={{ 
-                        background: `${combo.tagBg}15`, 
-                        color: combo.tagBg, 
-                        fontWeight: 800, 
-                        fontSize: '11px', 
-                        padding: '4px 10px', 
-                        borderRadius: 8,
-                        border: `1px solid ${combo.tagBg}30`
-                      }}>
-                        {combo.tag}
-                      </span>
-                      <span style={{ fontSize: '12px', color: '#78716c', fontWeight: 600 }}>
-                        {combo.subtitle}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <span style={{ fontSize: 26 }}>{combo.emoji}</span>
-                      <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#1c1917', lineHeight: 1.3 }}>
-                        {combo.name}
-                      </div>
-                    </div>
-
-                    <div style={{ 
-                      background: '#fafaf9', 
-                      borderRadius: 14, 
-                      padding: '12px 14px', 
-                      marginBottom: 16,
-                      border: '1px solid #f5f5f4'
-                    }}>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#a8a29e', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.4px' }}>
-                        Gồm {combo.items.length} món chuẩn vị:
-                      </div>
-                      <ul style={{ paddingLeft: 0, listStyle: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {combo.items.map((it, i) => (
-                          <li key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', color: '#44403c' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 13, flexShrink: 0 }} />
-                              <span style={{ fontWeight: 600 }}>{it.name}</span>
-                            </span>
-                            <span style={{ fontSize: '11px', color: '#78716c', background: '#e7e5e4', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap', marginLeft: 6 }}>
-                              {it.spec}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                      -{combo.discountPercent}%
+                    </span>
                   </div>
 
-                  <div style={{ paddingTop: 14, borderTop: '1px dashed #e7e5e4' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontSize: '11px', color: '#a8a29e', fontWeight: 600 }}>Giá trọn set:</div>
+                  {/* Body Content */}
+                  <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Tag color="orange" style={{ margin: 0, fontSize: '11px', fontWeight: 700, borderRadius: 6 }}>
+                        {combo.categoryLabel}
+                      </Tag>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b', fontWeight: 700, fontSize: '0.8rem' }}>
+                        <StarFilled />
+                        <span>{combo.rating}</span>
+                        <span style={{ color: '#a8a29e', fontWeight: 400 }}>({combo.reviewCount})</span>
+                      </div>
+                    </div>
+
+                    <Link to={`/combo/${combo.id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        fontWeight: 900,
+                        fontSize: '1.1rem',
+                        color: '#1c1917',
+                        lineHeight: 1.35,
+                        marginBottom: 6,
+                        height: 44,
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical'
+                      }}>
+                        {combo.name}
+                      </div>
+                    </Link>
+
+                    <div style={{
+                      background: '#fafaf9',
+                      borderRadius: 10,
+                      padding: '8px 10px',
+                      marginBottom: 12,
+                      border: '1px solid #f5f5f4',
+                      fontSize: '0.78rem',
+                      color: '#78716c',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      lineHeight: 1.45
+                    }}>
+                      🎁 <strong>Gồm:</strong> {combo.items?.map((it) => it.tenSanPham).join(' + ')}
+                    </div>
+
+                    {/* Price and CTA */}
+                    <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px dashed #fed7aa' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          <span style={{ color: '#ea580c', fontWeight: 900, fontSize: '1.35rem' }}>
+                          <span style={{ color: '#dc2626', fontWeight: 900, fontSize: '1.35rem' }}>
                             {formatVnd(combo.comboPrice)}
                           </span>
                           <span style={{ color: '#a8a29e', textDecoration: 'line-through', fontSize: '0.85rem' }}>
                             {formatVnd(combo.originalPrice)}
                           </span>
                         </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ 
-                          background: '#ffedd5', 
-                          color: '#c2410c', 
-                          fontWeight: 800, 
-                          fontSize: '11px', 
-                          padding: '3px 8px', 
-                          borderRadius: 6,
-                          display: 'inline-block',
-                          marginBottom: 2
-                        }}>
-                          -{combo.discountPct}%
+                        <span style={{ color: '#16a34a', fontWeight: 700, fontSize: '0.78rem' }}>
+                          Tiết kiệm {formatVnd(combo.savedAmount)}
                         </span>
-                        <div style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>
-                          {combo.savingsText}
-                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                        <Link to={`/combo/${combo.id}`} style={{ flex: 1 }}>
+                          <Button
+                            block
+                            style={{
+                              height: 40,
+                              borderRadius: 10,
+                              fontWeight: 700,
+                              borderColor: '#fed7aa',
+                              color: '#ea580c'
+                            }}
+                          >
+                            Chi tiết
+                          </Button>
+                        </Link>
+                        <Button
+                          type="primary"
+                          icon={<ShoppingCartOutlined />}
+                          loading={addingComboId === combo.id}
+                          onClick={(e) => handleQuickAddCombo(combo, e)}
+                          style={{
+                            height: 40,
+                            borderRadius: 10,
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                            border: 'none',
+                            boxShadow: '0 3px 8px rgba(234, 88, 12, 0.3)'
+                          }}
+                          title="Thêm trọn bộ vào giỏ hàng"
+                        >
+                          Thêm giỏ
+                        </Button>
                       </div>
                     </div>
-
-                    <Link to="/combo" style={{ textDecoration: 'none' }}>
-                      <Button 
-                        type="primary" 
-                        block 
-                        style={{ 
-                          height: 42, 
-                          borderRadius: 12, 
-                          fontWeight: 800, 
-                          fontSize: '0.92rem',
-                          background: combo.isHot ? 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' : '#ea580c',
-                          border: 'none',
-                          boxShadow: '0 4px 14px rgba(234, 88, 12, 0.25)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8
-                        }}
-                      >
-                        Khám phá các combo <ArrowRightOutlined />
-                      </Button>
-                    </Link>
                   </div>
                 </div>
               </div>
