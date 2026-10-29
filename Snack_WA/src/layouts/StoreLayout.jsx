@@ -201,17 +201,20 @@ export default function StoreLayout() {
           items={menuItems}
         />
 
-        <div className="store-search">
-          <Input
-            placeholder="Tìm khô gà, bánh tráng, cơm cháy..."
-            prefix={<SearchOutlined style={{ color: '#ea580c' }} />}
-            onPressEnter={(event) => {
-              if (event.target.value.trim()) {
-                navigate(`/san-pham?q=${encodeURIComponent(event.target.value.trim())}`);
-              }
-            }}
-          />
-        </div>
+        {/* Thanh tìm kiếm trên header: ẩn khi người dùng đã đăng nhập để nhường chỗ cho Menu & Session */}
+        {!token && (
+          <div className="store-search">
+            <Input
+              placeholder="Tìm khô gà, bánh tráng, cơm cháy..."
+              prefix={<SearchOutlined style={{ color: '#ea580c' }} />}
+              onPressEnter={(event) => {
+                if (event.target.value.trim()) {
+                  navigate(`/san-pham?q=${encodeURIComponent(event.target.value.trim())}`);
+                }
+              }}
+            />
+          </div>
+        )}
 
         <Space size="middle">
           {role === ROLES.KHACH_HANG && (
