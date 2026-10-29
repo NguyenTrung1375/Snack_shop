@@ -17,7 +17,8 @@ import {
   RocketOutlined,
   ShopOutlined,
   LeftOutlined,
-  RightOutlined
+  RightOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography, Tag, Skeleton, message, Tooltip, Progress, Rate, Avatar } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
@@ -57,7 +58,90 @@ const flattenCategoryTree = (nodes = [], depth = 0) => {
   return result;
 };
 
-// 20 Set combo ăn vặt chuẩn vị được import trực tiếp từ shared/constants/snackCombos.js đồng bộ 1:1 với trang /combo và mobile app
+// Danh sách 5 Banner thiết kế phong phú, bắt mắt chạy slide ở đầu trang chủ
+const HOME_BANNERS = [
+  {
+    id: 'combo-hot',
+    badgeIcon: '🔥',
+    badgeText: 'SIÊU COMBO 2026 • TIẾT KIỆM ĐẾN 35%',
+    title: '20+ Combo Ăn Vặt Chuẩn Vị, Siêu Tiết Kiệm',
+    subtitle: 'Thưởng thức trọn vẹn khô gà, khô bò, bánh tráng dẻo & cơm cháy đáy nồi. Tự động áp mã voucher ngầm cực sâu!',
+    primaryCtaText: 'Săn Combo Ngay',
+    primaryCtaLink: '/combo',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #ff5e14 0%, #ea580c 55%, #c2410c 100%)',
+    boxShadow: '0 12px 32px rgba(234, 88, 12, 0.25)',
+    highlightTag: 'HOT DEAL COMBO',
+    highlightMain: 'Chỉ Từ 39K',
+    highlightSub: 'Tặng kèm Voucher 30K',
+    tags: ['🍗 20 Combo Có Sẵn', '🏷️ Giảm Đến 35%', '⚡ Tự Động Áp Mã'],
+    mascotLabel: 'COMBO HOT',
+  },
+  {
+    id: 'flash-sale-do-kho',
+    badgeIcon: '⚡',
+    badgeText: 'FLASH SALE ĐẶC BIỆT • GIẢM TỚI 50%',
+    title: 'Khô Gà Lá Chanh & Khô Bò Cay Nồng',
+    subtitle: '100% ức gà tươi xé sợi dai mềm, bò tẩm vị đậm đà không phẩm màu. Hũ seal nhôm giòn rụm cả tuần!',
+    primaryCtaText: 'Khám Phá Đồ Khô',
+    primaryCtaLink: '/san-pham?q=khô',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #e11d48 0%, #be123c 55%, #881337 100%)',
+    boxShadow: '0 12px 32px rgba(190, 18, 60, 0.25)',
+    highlightTag: 'GIÒN RỤM ĐẬM VỊ',
+    highlightMain: 'Top 1 Bán Chạy',
+    highlightSub: 'Hơn 12.000 hũ đã bán',
+    tags: ['🥩 Thịt Tươi 100%', '🌿 Thơm Nức Lá Chanh', '🛡️ Chuẩn ATVSTP'],
+    mascotLabel: 'ĐỒ KHÔ ĐẬM VỊ',
+  },
+  {
+    id: 'banh-trang-tay-ninh',
+    badgeIcon: '🌯',
+    badgeText: 'ĐẶC SẢN TÂY NINH • CAY XÉ LƯỠI',
+    title: 'Bánh Tráng Phơi Sương Cuộn Tóp Mỡ',
+    subtitle: 'Bánh tráng phơi sương dẻo quẹo chấm sốt bơ trứng gà & sate tôm cay nồng, ăn nhâm nhi là hết sảy!',
+    primaryCtaText: 'Mua Bánh Tráng',
+    primaryCtaLink: '/san-pham?q=bánh%20tráng',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #d97706 0%, #b45309 55%, #78350f 100%)',
+    boxShadow: '0 12px 32px rgba(180, 83, 9, 0.25)',
+    highlightTag: 'MÓN GÂY NGHIỆN',
+    highlightMain: 'Bánh Tráng Cay',
+    highlightSub: 'Sốt bơ tắc đậm đà',
+    tags: ['🌶️ Cay Nồng Sate', '🧈 Sốt Bơ Trứng Béo', '🥢 Dẻo Quẹo Phơi Sương'],
+    mascotLabel: 'BÁNH TRÁNG CAY',
+  },
+  {
+    id: 'freeship-2h',
+    badgeIcon: '🚚',
+    badgeText: 'FREESHIP TOÀN QUỐC • GIAO TẬN CỬA',
+    title: 'Miễn Phí Vận Chuyển Đơn Ăn Vặt Từ 99K',
+    subtitle: 'Đóng gói 3 lớp chống ẩm siêu kỹ lưỡng. Đặt đơn là ship, nhận hàng giòn ngon tận tay chỉ trong 2 Giờ!',
+    primaryCtaText: 'Lên Đơn Ngay',
+    primaryCtaLink: '/san-pham',
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #0d9488 0%, #0f766e 55%, #134e4a 100%)',
+    boxShadow: '0 12px 32px rgba(15, 118, 110, 0.25)',
+    highlightTag: 'ĐẶC QUYỀN SHIP',
+    highlightMain: 'Freeship 0Đ',
+    highlightSub: 'Áp dụng từ đơn 99K',
+    tags: ['⚡ Giao Nhanh 2H', '📦 Đóng Thùng Kín', '🔄 1-Đổi-1 Miễn Phí'],
+    mascotLabel: 'GIAO SIÊU TỐC',
+  },
+  {
+    id: 'app-apk-snackshop',
+    badgeIcon: '📲',
+    badgeText: 'TRẢI NGHIỆM TIỆN LỢI • TẶNG VOUCHER 30K',
+    title: 'Tải Ứng Dụng SnackShop Android APK',
+    subtitle: 'Nhận thông báo cập nhật đơn hàng tức thì, lưu mã voucher và tích điểm đổi quà ăn vặt mỗi ngày.',
+    primaryCtaText: 'Tải APK Ngay',
+    primaryCtaLink: '/downloads/snackshop.apk',
+    isDownload: true,
+    gradient: 'radial-gradient(120% 120% at 85% 20%, #6366f1 0%, #4f46e5 55%, #312e81 100%)',
+    boxShadow: '0 12px 32px rgba(79, 70, 229, 0.25)',
+    highlightTag: 'APP ĐỘC QUYỀN',
+    highlightMain: 'Tặng 30.000đ',
+    highlightSub: 'Dành cho đơn đầu tiên',
+    tags: ['🎁 Tặng Voucher 30K', '⚡ 1 Chạm Đặt Món', '🔔 Cập Nhật Đơn Tức Thì'],
+    mascotLabel: 'SNACKSHOP APP',
+  }
+];
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -121,6 +205,26 @@ export default function HomePage() {
   const handleCopyVoucher = (code) => {
     navigator.clipboard.writeText(code);
     message.success(`Đã sao chép mã ưu đãi "${code}" vào bộ nhớ tạm!`);
+  };
+
+  // Multi-Banner Slider State (Tự động lướt banner mỗi 4.5s, tạm dừng khi hover)
+  const [bannerSlideIndex, setBannerSlideIndex] = useState(0);
+  const [isBannerPaused, setIsBannerPaused] = useState(false);
+
+  useEffect(() => {
+    if (isBannerPaused) return;
+    const bannerTimer = setInterval(() => {
+      setBannerSlideIndex((prev) => (prev >= HOME_BANNERS.length - 1 ? 0 : prev + 1));
+    }, 4500);
+    return () => clearInterval(bannerTimer);
+  }, [isBannerPaused]);
+
+  const handleBannerPrev = () => {
+    setBannerSlideIndex((prev) => (prev <= 0 ? HOME_BANNERS.length - 1 : prev - 1));
+  };
+
+  const handleBannerNext = () => {
+    setBannerSlideIndex((prev) => (prev >= HOME_BANNERS.length - 1 ? 0 : prev + 1));
   };
 
   // Slider cho 7 combo sản phẩm (hiển thị 3 combo trên desktop, tự động trượt qua mỗi 3.5s)
@@ -238,248 +342,378 @@ export default function HomePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
       
-      {/* 1. Hero Banner Sinh Động (Stitch Style) */}
+      {/* 1. Hero Multi-Banner Slider (Thiết kế nhỏ gọn, tinh tế & chạy slide 5 banner) */}
       <section 
+        onMouseEnter={() => setIsBannerPaused(true)}
+        onMouseLeave={() => setIsBannerPaused(false)}
         style={{
           position: 'relative',
+          borderRadius: 22,
           overflow: 'hidden',
-          borderRadius: 28,
-          padding: 'clamp(32px, 5vw, 56px)',
-          color: '#ffffff',
-          background: 'radial-gradient(130% 130% at 85% 15%, #ff6f26 0%, #f5520d 62%, #d93f02 100%)',
-          boxShadow: '0 20px 48px rgba(217, 63, 2, 0.28)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 32,
-          flexWrap: 'wrap'
+          boxShadow: '0 10px 28px rgba(0, 0, 0, 0.08)',
         }}
       >
-        {/* Glow Circles Decoration */}
-        <div style={{
-          position: 'absolute',
-          top: -70,
-          right: -70,
-          width: 320,
-          height: 320,
-          borderRadius: '50%',
-          background: 'rgba(255, 255, 255, 0.12)',
-          filter: 'blur(40px)',
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: -60,
-          left: '20%',
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: 'rgba(251, 191, 36, 0.15)',
-          filter: 'blur(50px)',
-          pointerEvents: 'none'
-        }} />
-
-        {/* Cột trái: Tiêu đề & CTAs */}
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 640 }}>
-          <div 
-            className="badge-shimmer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              backdropFilter: 'blur(8px)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.85rem',
-              padding: '6px 16px',
-              borderRadius: 30,
-              marginBottom: 16,
-              border: '1px solid rgba(255, 255, 255, 0.35)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <FireOutlined style={{ color: '#fde047', fontSize: 15 }} />
-            <span>THẾ GIỚI ĂN VẶT CHUẨN VỊ VIỆT</span>
-          </div>
-          
-          <Typography.Title 
-            style={{ 
-              color: '#ffffff', 
-              fontSize: 'clamp(2.1rem, 4.2vw, 3.4rem)', 
-              fontWeight: 900, 
-              lineHeight: 1.15, 
-              margin: '0 0 16px',
-              textShadow: '0 2px 10px rgba(67, 20, 7, 0.35)',
-              letterSpacing: '-0.5px'
-            }}
-          >
-            Đậm Vị Việt, Giòn Rụm & Vui Mê Say!
-          </Typography.Title>
-          
-          <Typography.Paragraph 
-            style={{ 
-              color: '#ffedd5', 
-              fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', 
-              maxWidth: 580, 
-              marginBottom: 26, 
-              lineHeight: 1.65 
-            }}
-          >
-            Chọn ngay các món ăn vặt thơm ngon nức tiếng: <strong>Khô gà lá chanh</strong> thơm lừng, <strong>Bánh tráng Tây Ninh</strong> cay xé lưỡi, <strong>Cơm cháy giòn tan</strong> rợp chà bông... Đóng gói kín sạch sẽ, giao siêu tốc tận tay chỉ trong <strong>2 Giờ</strong>!
-          </Typography.Paragraph>
-
-          <Space size="middle" wrap align="center">
-            <Link to="/san-pham">
-              <Button 
-                type="primary" 
-                size="large" 
-                icon={<ShoppingOutlined />}
-                style={{ 
-                  height: 50, 
-                  paddingInline: 30, 
-                  fontSize: '1rem', 
-                  fontWeight: 800,
-                  background: '#ffffff',
-                  color: '#ea580c',
-                  border: 'none',
-                  boxShadow: '0 8px 24px rgba(67, 20, 7, 0.3)',
-                  borderRadius: 14,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}
-              >
-                Khám phá món ngon
-              </Button>
-            </Link>
-
-            <div 
+        <div 
+          style={{
+            display: 'flex',
+            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            transform: `translateX(-${bannerSlideIndex * 100}%)`,
+            width: '100%',
+          }}
+        >
+          {HOME_BANNERS.map((banner) => (
+            <div
+              key={banner.id}
               style={{
-                display: 'inline-flex',
+                flex: '0 0 100%',
+                minWidth: '100%',
+                maxWidth: '100%',
+                position: 'relative',
+                background: banner.gradient,
+                boxShadow: banner.boxShadow,
+                padding: 'clamp(22px, 3.5vw, 32px) clamp(48px, 5.5vw, 68px)',
+                color: '#ffffff',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                background: 'rgba(0, 0, 0, 0.22)',
-                backdropFilter: 'blur(8px)',
-                padding: '8px 16px',
-                borderRadius: 14,
-                border: '1px solid rgba(255, 255, 255, 0.2)'
+                justifyContent: 'space-between',
+                gap: 24,
+                boxSizing: 'border-box',
+                minHeight: 250,
+                flexWrap: 'wrap',
               }}
             >
-              <div style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: 'rgba(253, 224, 71, 0.25)',
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fde047',
-                fontSize: 16
-              }}>
-                <ThunderboltOutlined />
-              </div>
-              <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#ffffff' }}>Giao Hỏa Tốc 2H</div>
-                <div style={{ fontSize: '0.72rem', color: '#fef08a' }}>Nội thành TP.HCM & Hà Nội</div>
-              </div>
-            </div>
+              {/* Background ambient glow circles */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -50,
+                  right: -50,
+                  width: 240,
+                  height: 240,
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  filter: 'blur(35px)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: -40,
+                  left: '25%',
+                  width: 200,
+                  height: 200,
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  filter: 'blur(35px)',
+                  pointerEvents: 'none',
+                }}
+              />
 
-            {role === 'khach_hang' && (
-              <Link to="/gio-hang">
-                <Button 
-                  size="large"
-                  style={{ 
-                    height: 50, 
-                    paddingInline: 20, 
-                    borderRadius: 14,
-                    background: 'rgba(255, 255, 255, 0.15)',
+              {/* Left Column: Title, Subtitle, Badges & CTA */}
+              <div style={{ position: 'relative', zIndex: 2, flex: '1 1 500px', maxWidth: 660 }}>
+                {/* Badge */}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(8px)',
                     color: '#ffffff',
-                    borderColor: 'rgba(255, 255, 255, 0.4)',
-                    fontWeight: 700,
-                    backdropFilter: 'blur(8px)'
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    padding: '4px 12px',
+                    borderRadius: 20,
+                    marginBottom: 10,
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    letterSpacing: '0.4px',
                   }}
                 >
-                  Giỏ hàng của bạn
-                </Button>
-              </Link>
-            )}
-          </Space>
-        </div>
+                  <span>{banner.badgeIcon}</span>
+                  <span>{banner.badgeText}</span>
+                </div>
 
-        {/* Cột phải: Mascot Collage Card (Theo thiết kế Stitch) */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center', flex: '1 1 280px', maxWidth: 360 }}>
-          <div 
-            style={{
-              position: 'relative',
-              background: 'rgba(255, 255, 255, 0.12)',
-              backdropFilter: 'blur(16px)',
-              borderRadius: 24,
-              padding: 20,
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
-              width: '100%',
-              textAlign: 'center'
-            }}
-          >
-            {/* Hot deal sticker */}
-            <div className="hot-deal-sticker">
-              🔥 SIÊU ƯU ĐÃI
-            </div>
+                {/* Title */}
+                <Typography.Title
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 'clamp(1.35rem, 2.5vw, 1.85rem)',
+                    fontWeight: 900,
+                    lineHeight: 1.25,
+                    margin: '0 0 8px',
+                    letterSpacing: '-0.3px',
+                    textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  }}
+                >
+                  {banner.title}
+                </Typography.Title>
 
-            <div style={{
-              background: 'rgba(46, 20, 8, 0.4)',
-              borderRadius: 18,
-              padding: '24px 16px',
-              border: '1px solid rgba(254, 215, 170, 0.25)'
-            }}>
-              {/* Mascot Stamp tròn lớn */}
-              <div style={{
-                width: 140,
-                height: 140,
-                margin: '0 auto 16px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #facc15 0%, #ea580c 100%)',
-                padding: 6,
-                boxShadow: '0 12px 24px rgba(0, 0, 0, 0.35)',
-                display: 'grid',
-                placeItems: 'center'
-              }}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: '#2e1408',
-                  border: '3px solid #fef08a',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 8
-                }}>
-                  <img 
-                    src="/logo.png" 
-                    alt="Snack Shop Mascot" 
-                    style={{ width: 56, height: 56, objectFit: 'contain', marginBottom: 4 }} 
-                  />
-                  <span style={{ fontSize: '12px', fontWeight: 900, color: '#ffffff', letterSpacing: '0.5px' }}>
-                    SNACK<span style={{ color: '#facc15' }}>SHOP</span>
-                  </span>
-                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#fde047', textTransform: 'uppercase' }}>
-                    100% Sạch & Giòn
-                  </span>
+                {/* Subtitle */}
+                <Typography.Paragraph
+                  style={{
+                    color: '#ffedd5',
+                    fontSize: 'clamp(0.85rem, 1.1vw, 0.95rem)',
+                    maxWidth: 580,
+                    margin: '0 0 16px',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {banner.subtitle}
+                </Typography.Paragraph>
+
+                {/* Actions & Tags */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {banner.isDownload ? (
+                    <a
+                      href={banner.primaryCtaLink}
+                      download="SnackShop.apk"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Button
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        style={{
+                          height: 38,
+                          paddingInline: 20,
+                          fontSize: '0.88rem',
+                          fontWeight: 800,
+                          background: '#ffffff',
+                          color: '#4f46e5',
+                          border: 'none',
+                          borderRadius: 12,
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {banner.primaryCtaText}
+                      </Button>
+                    </a>
+                  ) : (
+                    <Link to={banner.primaryCtaLink}>
+                      <Button
+                        type="primary"
+                        icon={<ShoppingOutlined />}
+                        style={{
+                          height: 38,
+                          paddingInline: 20,
+                          fontSize: '0.88rem',
+                          fontWeight: 800,
+                          background: '#ffffff',
+                          color: '#ea580c',
+                          border: 'none',
+                          borderRadius: 12,
+                          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {banner.primaryCtaText}
+                      </Button>
+                    </Link>
+                  )}
+
+                  {/* Micro tags */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {banner.tags.map((tag, tIdx) => (
+                      <span
+                        key={tIdx}
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.22)',
+                          backdropFilter: 'blur(6px)',
+                          padding: '4px 10px',
+                          borderRadius: 8,
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          color: '#fef08a',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* 2 Tag nhỏ cam kết */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 10, fontSize: '11px', fontWeight: 700 }}>
-                <span style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.15)', color: '#86efac' }}>
-                  🌿 Không phẩm màu
-                </span>
-                <span style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.15)', color: '#fde047' }}>
-                  🛡️ Chuẩn ATVSTP
-                </span>
+              {/* Right Column: Sleek Compact Glass Card */}
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flex: '0 0 210px',
+                  maxWidth: 240,
+                }}
+              >
+                <div
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.14)',
+                    backdropFilter: 'blur(14px)',
+                    borderRadius: 18,
+                    padding: '16px 14px',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.2)',
+                    width: '100%',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.28)',
+                      color: '#fef08a',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      display: 'inline-block',
+                      marginBottom: 6,
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    {banner.highlightTag}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '1.35rem',
+                      fontWeight: 900,
+                      color: '#ffffff',
+                      lineHeight: 1.2,
+                      marginBottom: 4,
+                      letterSpacing: '-0.3px',
+                    }}
+                  >
+                    {banner.highlightMain}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '0.78rem',
+                      color: '#fed7aa',
+                      fontWeight: 600,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {banner.highlightSub}
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: '1px dashed rgba(255, 255, 255, 0.25)',
+                      paddingTop: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="Logo"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        objectFit: 'contain',
+                        borderRadius: 6,
+                        background: '#fff',
+                        padding: 2,
+                      }}
+                    />
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff' }}>
+                      {banner.mascotLabel}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ))}
+        </div>
+
+        {/* Navigation Arrows */}
+        <Button
+          shape="circle"
+          icon={<LeftOutlined style={{ fontSize: 13 }} />}
+          onClick={handleBannerPrev}
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            width: 34,
+            height: 34,
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#ffffff',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        />
+        <Button
+          shape="circle"
+          icon={<RightOutlined style={{ fontSize: 13 }} />}
+          onClick={handleBannerNext}
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+            width: 34,
+            height: 34,
+            background: 'rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            color: '#ffffff',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        />
+
+        {/* Pill Indicators */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(0, 0, 0, 0.25)',
+            padding: '4px 10px',
+            borderRadius: 20,
+            backdropFilter: 'blur(6px)',
+          }}
+        >
+          {HOME_BANNERS.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setBannerSlideIndex(idx)}
+              style={{
+                width: bannerSlideIndex === idx ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: bannerSlideIndex === idx ? '#ffffff' : 'rgba(255, 255, 255, 0.45)',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+              }}
+              title={`Slide ${idx + 1}`}
+            />
+          ))}
         </div>
       </section>
 
